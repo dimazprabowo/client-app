@@ -90,7 +90,7 @@
                             wire:click.prevent="sendVerification" 
                             wire:loading.attr="disabled"
                             wire:target="sendVerification"
-                            class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                            class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                         >
                             <span wire:loading.remove wire:target="sendVerification">
                                 {{ __('Click here to re-send the verification email.') }}

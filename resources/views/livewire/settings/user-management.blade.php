@@ -19,7 +19,7 @@
         <!-- More Filters Button with Popover -->
         <div class="relative w-full md:w-auto" x-data="{ filterOpen: false }" @click.outside="filterOpen = false">
             <button type="button" @click="filterOpen = !filterOpen"
-                class="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors w-full md:w-auto">
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors w-full md:w-auto">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                 </svg>
@@ -47,7 +47,7 @@
                         Tutup
                     </button>
                     <button wire:click="resetFilters" wire:loading.attr="disabled" wire:target="resetFilters" type="button"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50">
+                        class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50">
                         <svg wire:loading.class="hidden" wire:target="resetFilters" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <svg wire:loading wire:target="resetFilters" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                         <span wire:loading.class="hidden" wire:target="resetFilters">Reset Filter</span>
@@ -139,13 +139,13 @@
                                     <div class="flex flex-wrap gap-1">
                                         @foreach($user->roles as $role)
                                             @php $colorClass = $roleColors[$role->name] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'; @endphp
-                                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $colorClass }}">
+                                            <span class="inline-flex items-center whitespace-nowrap px-2 py-1 text-xs font-medium rounded-full {{ $colorClass }}">
                                                 {{ ucfirst($role->name) }}
                                             </span>
                                         @endforeach
                                     </div>
                                 @else
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">No Role</span>
+                                    <span class="inline-flex items-center whitespace-nowrap px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">No Role</span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -164,7 +164,7 @@
                                             {{ $user->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
                                     </button>
                                 @else
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $user->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' }}">
+                                    <span class="inline-flex items-center whitespace-nowrap px-2 py-1 text-xs font-medium rounded-full {{ $user->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' }}">
                                         {{ $user->is_active ? 'Aktif' : 'Nonaktif' }}
                                     </span>
                                 @endcan
