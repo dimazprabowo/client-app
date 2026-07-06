@@ -2,8 +2,8 @@
     'filters' => [],
 ])
 
-<div class="relative w-full md:w-auto" x-data="{ filterOpen: false }" @click.outside="filterOpen = false">
-    <button @click="filterOpen = !filterOpen" type="button"
+<div class="relative w-full md:w-auto" x-data="{ filterOpen: false, dropUp: false }" @click.outside="filterOpen = false">
+    <button @click="filterOpen = !filterOpen; $nextTick(() => { dropUp = filterOpen && ($el.getBoundingClientRect().bottom + 320 > window.innerHeight) })" type="button"
         class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors w-full md:w-auto">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
         <span>Filter</span>
@@ -14,8 +14,15 @@
         </template>
     </button>
 
-    <div x-show="filterOpen" x-cloak x-transition.origin.top.left
-        class="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 p-4">
+    <div x-show="filterOpen" x-cloak
+        :class="dropUp ? 'bottom-full mb-2' : 'top-full mt-2'"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 scale-95"
+        x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 scale-100"
+        x-transition:leave-end="opacity-0 scale-95"
+        class="absolute right-0 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 p-4">
         <div class="space-y-3">
             {{ $slot }}
         </div>
