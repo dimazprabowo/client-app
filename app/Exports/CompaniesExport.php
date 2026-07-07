@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Company;
+use App\Traits\HasDynamicLike;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -13,7 +14,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class CompaniesExport implements FromQuery, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
 {
-    use Exportable;
+    use Exportable, HasDynamicLike;
 
     protected ?string $search;
     protected ?string $statusFilter;
@@ -29,12 +30,13 @@ class CompaniesExport implements FromQuery, WithHeadings, WithMapping, WithStyle
         $query = Company::withCount('users');
 
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('code', 'like', "%{$this->search}%")
-                  ->orWhere('name', 'like', "%{$this->search}%")
-                  ->orWhere('email', 'like', "%{$this->search}%")
-                  ->orWhere('phone', 'like', "%{$this->search}%")
-                  ->orWhere('pic_name', 'like', "%{$this->search}%");
+            $operator = $this->getLikeOperator();
+            $query->where(function ($q) use ($operator) {
+                $q->where('code', $operator, "%{$this->search}%")
+                  ->orWhere('name', $operator, "%{$this->search}%")
+                  ->orWhere('email', $operator, "%{$this->search}%")
+                  ->orWhere('phone', $operator, "%{$this->search}%")
+                  ->orWhere('pic_name', $operator, "%{$this->search}%");
             });
         }
 

@@ -13,10 +13,11 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Throwable;
 use Carbon\Carbon;
+use App\Traits\HasDynamicLike;
 
 class ChatIndex extends Component
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, HasDynamicLike;
 
     public ?int $activeChatId = null;
     public string $messageBody = '';
@@ -417,11 +418,12 @@ class ChatIndex extends Component
 
         $searchResults = collect();
         if (strlen($this->searchUser) >= 2) {
+            $operator = $this->getLikeOperator();
             $searchResults = User::active()
                 ->where('id', '!=', $userId)
-                ->where(function ($q) {
-                    $q->where('name', 'ilike', "%{$this->searchUser}%")
-                      ->orWhere('email', 'ilike', "%{$this->searchUser}%");
+                ->where(function ($q) use ($operator) {
+                    $q->where('name', $operator, "%{$this->searchUser}%")
+                      ->orWhere('email', $operator, "%{$this->searchUser}%");
                 })
                 ->limit(10)
                 ->get();

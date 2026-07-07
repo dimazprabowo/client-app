@@ -7,6 +7,7 @@ use App\Exports\CompaniesExport;
 use App\Livewire\Traits\HasNotification;
 use App\Models\Company;
 use App\Services\CompanyService;
+use App\Traits\HasDynamicLike;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -14,7 +15,7 @@ use Livewire\WithPagination;
 
 class CompanyManagement extends Component
 {
-    use WithPagination, AuthorizesRequests, HasNotification;
+    use WithPagination, AuthorizesRequests, HasNotification, HasDynamicLike;
 
     public $search = '';
     public $statusFilter = '';
@@ -270,13 +271,14 @@ class CompanyManagement extends Component
     {
         $this->authorize('exportPdf', Company::class);
 
+        $operator = $this->getLikeOperator();
         $companies = Company::withCount('users')
-            ->when($this->search, function ($q) {
-                $q->where(function ($q) {
-                    $q->where('code', 'like', "%{$this->search}%")
-                      ->orWhere('name', 'like', "%{$this->search}%")
-                      ->orWhere('email', 'like', "%{$this->search}%")
-                      ->orWhere('pic_name', 'like', "%{$this->search}%");
+            ->when($this->search, function ($q) use ($operator) {
+                $q->where(function ($q) use ($operator) {
+                    $q->where('code', $operator, "%{$this->search}%")
+                      ->orWhere('name', $operator, "%{$this->search}%")
+                      ->orWhere('email', $operator, "%{$this->search}%")
+                      ->orWhere('pic_name', $operator, "%{$this->search}%");
                 });
             })
             ->when($this->statusFilter !== null && $this->statusFilter !== '', function ($q) {

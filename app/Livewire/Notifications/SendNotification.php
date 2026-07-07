@@ -5,13 +5,14 @@ namespace App\Livewire\Notifications;
 use App\Livewire\Traits\HasNotification;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Traits\HasDynamicLike;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class SendNotification extends Component
 {
-    use AuthorizesRequests, HasNotification, WithPagination;
+    use AuthorizesRequests, HasNotification, WithPagination, HasDynamicLike;
 
     // Form fields
     public string $target = 'all'; // 'all' | 'specific'
@@ -144,10 +145,11 @@ class SendNotification extends Component
     {
         $this->authorize('notifications_send');
 
+        $operator = $this->getLikeOperator();
         $users = User::active()
-            ->when($this->userSearch, fn($q) => $q->where(function ($q) {
-                $q->where('name', 'like', "%{$this->userSearch}%")
-                  ->orWhere('email', 'like', "%{$this->userSearch}%");
+            ->when($this->userSearch, fn($q) => $q->where(function ($q) use ($operator) {
+                $q->where('name', $operator, "%{$this->userSearch}%")
+                  ->orWhere('email', $operator, "%{$this->userSearch}%");
             }))
             ->orderBy('name')
             ->paginate(8, pageName: 'usersPage');
@@ -157,9 +159,9 @@ class SendNotification extends Component
             ->get(['id', 'name', 'email']);
 
         $history = \App\Models\Notification::with('user:id,name')
-            ->when($this->historySearch, fn($q) => $q->where(function ($q) {
-                $q->where('title', 'like', "%{$this->historySearch}%")
-                  ->orWhere('message', 'like', "%{$this->historySearch}%");
+            ->when($this->historySearch, fn($q) => $q->where(function ($q) use ($operator) {
+                $q->where('title', $operator, "%{$this->historySearch}%")
+                  ->orWhere('message', $operator, "%{$this->historySearch}%");
             }))
             ->latest()
             ->paginate(15, pageName: 'historyPage');

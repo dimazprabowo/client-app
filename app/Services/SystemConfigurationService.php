@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Models\SystemConfiguration;
+use App\Traits\HasDynamicLike;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class SystemConfigurationService
 {
+    use HasDynamicLike;
+
     public function getFiltered(
         ?string $search = null,
         ?string $isActive = null,
@@ -15,10 +18,11 @@ class SystemConfigurationService
         $query = SystemConfiguration::query();
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('key', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('value', 'like', "%{$search}%");
+            $operator = $this->getLikeOperator();
+            $query->where(function ($q) use ($search, $operator) {
+                $q->where('key', $operator, "%{$search}%")
+                  ->orWhere('description', $operator, "%{$search}%")
+                  ->orWhere('value', $operator, "%{$search}%");
             });
         }
 

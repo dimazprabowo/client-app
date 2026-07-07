@@ -7,6 +7,7 @@ use App\Enums\ConfigDataType;
 use App\Exports\SystemConfigurationsExport;
 use App\Livewire\Traits\HasNotification;
 use App\Models\SystemConfiguration as SystemConfigModel;
+use App\Traits\HasDynamicLike;
 use App\Services\SystemConfigurationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -16,7 +17,7 @@ use Livewire\WithPagination;
 
 class SystemConfiguration extends Component
 {
-    use WithPagination, AuthorizesRequests, HasNotification;
+    use WithPagination, AuthorizesRequests, HasNotification, HasDynamicLike;
 
     protected $paginationTheme = 'tailwind';
 
@@ -215,10 +216,11 @@ class SystemConfiguration extends Component
         $query = SystemConfigModel::query();
 
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('key', 'like', "%{$this->search}%")
-                  ->orWhere('description', 'like', "%{$this->search}%")
-                  ->orWhere('value', 'like', "%{$this->search}%");
+            $operator = $this->getLikeOperator();
+            $query->where(function ($q) use ($operator) {
+                $q->where('key', $operator, "%{$this->search}%")
+                  ->orWhere('description', $operator, "%{$this->search}%")
+                  ->orWhere('value', $operator, "%{$this->search}%");
             });
         }
 
