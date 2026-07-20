@@ -58,6 +58,35 @@ Pola full-page form:
 5. Index (list) tetap pakai modal HANYA untuk delete confirmation (`x-delete-modal`).
 
 # UI/UX Konsisten (pakai reusable components yang SUDAH ADA)
+
+## Inventaris Komponen (CEK INI DULU sebelum buat komponen baru)
+| Kategori | Komponen | Path |
+|----------|----------|------|
+| Tombol | `<x-loading-button>` | `components/loading-button.blade.php` |
+| Tombol | `<x-cancel-button>` | `components/cancel-button.blade.php` |
+| Tombol | `<x-primary-button>` | `components/primary-button.blade.php` |
+| Tombol | `<x-secondary-button>` | `components/secondary-button.blade.php` |
+| Tombol | `<x-danger-button>` | `components/danger-button.blade.php` |
+| Modal | `<x-modal>` | `components/modal.blade.php` |
+| Modal | `<x-delete-modal>` | `components/delete-modal.blade.php` |
+| Modal | `<x-confirm-modal>` | `components/confirm-modal.blade.php` |
+| Form | `<x-input-label>` | `components/input-label.blade.php` |
+| Form | `<x-text-input>` | `components/text-input.blade.php` |
+| Form | `<x-input-error>` | `components/input-error.blade.php` |
+| Select | `<x-searchable-select>` | `components/searchable-select.blade.php` |
+| Select | `<x-multi-searchable-select>` | `components/multi-searchable-select.blade.php` |
+| Filter | `<x-filter-popover>` | `components/filter-popover.blade.php` |
+| Notif | `<x-toast>` | `components/toast.blade.php` (auto-render di layout) |
+| Notif | `<x-action-message>` | `components/action-message.blade.php` |
+| Spinner | `<x-loading-spinner>` | `components/loading-spinner.blade.php` |
+| Icon | `<x-icon>` | `components/icon.blade.php` |
+| Layout | `<x-app-layout>` | `layouts/app.blade.php` (title prop, header slot) |
+| Layout | `<x-guest-layout>` | `layouts/guest.blade.php` |
+
+DILARANG buat komponen baru jika fungsi sudah ada di tabel di atas.
+Jika butuh variant baru (mis. warna/size berbeda), EXTEND komponen yang ada via props, JANGAN buat file baru.
+
+## Aturan Pakai Komponen
 - Tombol aksi: `<x-loading-button>` (WAJIB di SETIAP klik, ada loadingText + wire:target).
   Setiap action button WAJIB punya `wire:key` yang unik untuk mencegah konflik Livewire re-render.
   Contoh: `wire:key="btn-save-{{ $item->id }}"`.
@@ -132,6 +161,37 @@ Jika ada ambiguitas yang berdampak besar -> TANYA dulu, jangan berasumsi.
 - Upload file: tampilkan status (processing/completed/failed) + progress, tombol download/preview bila selesai.
 - Responsive: uji layout mobile (stack) & desktop.
 
+# Design System & Responsive (WAJIB, bukan opsional)
+
+## Prinsip Desain
+- KONSISTENSI adalah prioritas #1. Ikuti pola visual yang sudah ada di template.
+- Gunakan sistem spacing Tailwind: `px-4 sm:px-6 lg:px-8` untuk content padding (sudah ada di layout).
+- Card/panel: `bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700`.
+- Page header: judul `text-2xl font-bold text-gray-900 dark:text-white` + subjudul `text-sm text-gray-500 dark:text-gray-400`.
+- Section header di form: `text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2 mb-4`.
+- Table header: `bg-gray-50 dark:bg-gray-700/50 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider`.
+- Table row: `hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors`.
+- Badge status: pakai method `badgeClass()` dari Enum, JANGAN hardcode warna di Blade.
+
+## Responsive WAJIB (cek di setiap halaman)
+- Mobile-first: tulis class mobile dulu, lalu `sm:`, `md:`, `lg:` untuk breakpoint ke atas.
+- Tabel: gunakan `overflow-x-auto` wrapper di luar `<table>` untuk horizontal scroll di mobile.
+- Grid form: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4` (1 kolom mobile, 2 tablet, 3 desktop).
+- Action bar: tombol `w-full sm:w-auto` (full-width mobile, auto desktop).
+- Filter & search: stack vertical di mobile (`flex flex-col sm:flex-row gap-3`), horizontal di desktop.
+- Modal: `max-w-2xl` default, content `px-4 py-4 sm:p-6` (padding lebih kecil di mobile).
+- Sidebar: sudah auto-collapse di mobile via Alpine store (jangan override).
+- Pagination: `hidden sm:flex` untuk prev/next text, cukup ikon di mobile.
+- Empty state: centered, `py-12 text-center`, ikon `h-12 w-12 mx-auto text-gray-400`.
+- Font size: `text-sm` untuk tabel/form (compact), `text-base` untuk page header, `text-xs` untuk meta/badge.
+
+## Aksesibilitas Dasar
+- Setiap input WAJIB punya `<x-input-label>` dengan `for` attribute.
+- Tombol icon-only WAJIB punya `title` atau `aria-label`.
+- Kontras warna: gunakan palet Tailwind (gray-900/white untuk teks utama, gray-500/400 untuk sekunder).
+- Focus ring: `focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800`.
+- `x-cloak` pada elemen Alpine yang ada `x-show` untuk mencegah flash sebelum init.
+
 # Error Handling (pola seragam)
 Bungkus aksi Service call dengan try/catch:
 - catch AuthorizationException -> notifyError("Anda tidak memiliki izin...")
@@ -169,7 +229,8 @@ JANGAN bocorkan pesan exception mentah ke user.
 - [ ] Livewire: rules()+attributes, authorize di tiap aksi, loading state, notifikasi
 - [ ] Form strategy tepat: modal untuk sederhana, full-page untuk kompleks (nested/repeater/upload)
 - [ ] Policy dibuat & terdaftar; permission di PermissionSeeder; grup di RolePermissionService; menu di HasMenuItems
-- [ ] Blade: pakai reusable components, dark mode, TANPA logic (logic di Enum/Service)
+- [ ] Blade: pakai reusable components (cek inventaris), dark mode, TANPA logic (logic di Enum/Service)
+- [ ] Responsive: mobile-first, tabel overflow-x-auto, grid form adaptif, action bar stack di mobile
 - [ ] Semua action button punya wire:key unik + loading state (wire:target)
 - [ ] File (jika ada): async via Job/worker + FileStorageService (tanpa duplikasi path builder)
 - [ ] Export Excel & PDF (jika relevan) + permission-nya
@@ -187,3 +248,7 @@ JANGAN bocorkan pesan exception mentah ke user.
 - Menggunakan ID mentah (angka) di URL untuk model yang punya HasEncryptedRouteKey
 - Membuat action button tanpa wire:key dan loading state
 - Memakai modal untuk form kompleks (nested/repeater/upload file) -- gunakan full-page form
+- Membuat komponen Blade baru jika fungsi sudah ada di inventaris komponen
+- Hardcode spacing/warna/typography yang inkonsisten dengan design system template
+- Membuat tabel tanpa overflow-x-auto (horizontal scroll di mobile)
+- Membuat form grid tanpa breakpoint responsif (harus adaptif 1/2/3 kolom)
