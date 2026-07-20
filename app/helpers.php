@@ -170,3 +170,22 @@ if (!function_exists('file_disk')) {
         return config('filesystems.default', 'local');
     }
 }
+
+if (!function_exists('upload_path')) {
+    /**
+     * Build a permanent storage path following the app-wide convention:
+     *   {app_env}/{feature}/{...segments}/{slug-name}_{YmdHis}.{ext}
+     *
+     * Centralized via FileStorageService to avoid duplicating path logic.
+     *
+     * @param string        $feature      Menu/feature name, e.g. 'personel-certificates'
+     * @param array<string> $segments     Extra path segments (auto-slugged), e.g. [$itemSlug]
+     * @param string        $originalName Original file name (used for extension & base name)
+     * @param string|null   $baseName     Override base file name (default: from originalName)
+     */
+    function upload_path(string $feature, array $segments, string $originalName, ?string $baseName = null): string
+    {
+        return app(\App\Services\FileStorageService::class)
+            ->buildPath($feature, $segments, $originalName, $baseName);
+    }
+}
