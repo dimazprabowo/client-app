@@ -84,6 +84,7 @@ class RolePermissionService
                 ['name' => 'companies_delete',       'label' => 'Hapus Perusahaan'],
                 ['name' => 'companies_export_excel', 'label' => 'Export Excel Perusahaan'],
                 ['name' => 'companies_export_pdf',   'label' => 'Export PDF Perusahaan'],
+                ['name' => 'manage_own_company',     'label' => 'Kelola Perusahaan Sendiri'],
             ],
             'Konfigurasi System' => [
                 ['name' => 'configuration_view',         'label' => 'Lihat Konfigurasi'],
