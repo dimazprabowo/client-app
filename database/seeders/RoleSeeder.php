@@ -21,9 +21,11 @@ class RoleSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $admin->syncPermissions(Permission::all());
 
-        // 3. User - No default permissions
-        // Admin must explicitly grant permissions via UI
+        // 3. User - Basic permissions (notifications + dashboard)
         $user = Role::firstOrCreate(['name' => 'user']);
-        $user->syncPermissions([]);
+        $user->syncPermissions([
+            'dashboard_view',
+            'notifications_view',
+        ]);
     }
 }
