@@ -13,6 +13,16 @@
 
         <title>{{ $title }} - {{ config('app.name', 'Laravel') }}</title>
 
+        <!-- Anti-FOUC: Apply dark mode instantly -->
+        <script>
+            (function() {
+                var d = localStorage.getItem('darkMode');
+                if (d === 'true' || (d === null && matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                }
+            })();
+        </script>
+
         <!-- Favicon -->
         <link rel="icon" type="image/webp" href="{{ asset('images/bki-main.webp') }}">
         <link rel="apple-touch-icon" href="{{ asset('images/bki-main.webp') }}">
