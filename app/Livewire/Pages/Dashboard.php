@@ -13,7 +13,7 @@ class Dashboard extends Component
     public function render()
     {
         $user = auth()->user();
-        $canViewStats = Gate::allows('viewStats');
+        $canViewStats = Gate::allows('dashboard_view');
 
         $data = [
             'authUser' => $user,
@@ -23,9 +23,16 @@ class Dashboard extends Component
         ];
 
         if ($canViewStats) {
-            $data['totalUsers']     = User::count();
-            $data['totalCompanies'] = Company::count();
-            $data['totalRoles']     = Role::count();
+            // Only query counts the user is permitted to see (avoid information leak + unnecessary queries).
+            if (Gate::allows('users_view')) {
+                $data['totalUsers'] = User::count();
+            }
+            if (Gate::allows('companies_view')) {
+                $data['totalCompanies'] = Company::count();
+            }
+            if (Gate::allows('roles_view')) {
+                $data['totalRoles'] = Role::count();
+            }
         }
 
         return view('livewire.pages.dashboard', $data);

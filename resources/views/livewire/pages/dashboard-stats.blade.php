@@ -22,9 +22,11 @@
         </div>
     </div>
 
-    {{-- Stat Cards --}}
+    {{-- Stat Cards: User, Company & Role (gated by respective entity permissions) --}}
+    @canany(['users_view', 'companies_view', 'roles_view'])
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
+        @can('users_view')
         {{-- Total Users --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
             <div class="flex items-center justify-between">
@@ -40,7 +42,9 @@
                 </div>
             </div>
         </div>
+        @endcan
 
+        @can('companies_view')
         {{-- Total Companies --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
             <div class="flex items-center justify-between">
@@ -56,7 +60,9 @@
                 </div>
             </div>
         </div>
+        @endcan
 
+        @can('roles_view')
         {{-- Total Roles --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
             <div class="flex items-center justify-between">
@@ -72,10 +78,13 @@
                 </div>
             </div>
         </div>
+        @endcan
 
     </div>
+    @endcanany
 
-    {{-- Quick Actions --}}
+    {{-- Quick Actions (only render if user has at least one relevant permission) --}}
+    @canany(['users_view', 'roles_view', 'configuration_view', 'companies_view'])
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
         <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">Aksi Cepat</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -143,8 +152,10 @@
 
         </div>
     </div>
+    @endcanany
 
-    {{-- System Info --}}
+    {{-- System Info (gated by configuration_view — internal app info) --}}
+    @can('configuration_view')
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
         <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">Informasi System</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -178,5 +189,6 @@
             </div>
         </div>
     </div>
+    @endcan
 
 </div>
