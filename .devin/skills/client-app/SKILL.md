@@ -1,5 +1,9 @@
 ---
+name: client-app
 description: Panduan membangun fitur/aplikasi baru di atas template client-app (Laravel 12 + Livewire 4) secara konsisten, clean, permission-first, dan UI elegan.
+triggers:
+  - user
+  - model
 ---
 
 # Peran Kamu
@@ -62,11 +66,12 @@ Pola full-page form:
 ## Inventaris Komponen (CEK INI DULU sebelum buat komponen baru)
 | Kategori | Komponen | Path |
 |----------|----------|------|
-| Tombol | `<x-loading-button>` | `components/loading-button.blade.php` |
+| Tombol | `<x-loading-button>` | `components/loading-button.blade.php` (filled + icon-only variant, built-in icons) |
 | Tombol | `<x-cancel-button>` | `components/cancel-button.blade.php` |
-| Tombol | `<x-primary-button>` | `components/primary-button.blade.php` |
-| Tombol | `<x-secondary-button>` | `components/secondary-button.blade.php` |
-| Tombol | `<x-danger-button>` | `components/danger-button.blade.php` |
+| Tombol | `<x-primary-button>` | `components/primary-button.blade.php` (legacy, no loading) |
+| Tombol | `<x-secondary-button>` | `components/secondary-button.blade.php` (legacy, no loading) |
+| Tombol | `<x-danger-button>` | `components/danger-button.blade.php` (legacy, no loading) |
+| Toggle | `<x-toggle-switch>` | `components/toggle-switch.blade.php` (active/target/disabled/activeColor) |
 | Modal | `<x-modal>` | `components/modal.blade.php` |
 | Modal | `<x-delete-modal>` | `components/delete-modal.blade.php` |
 | Modal | `<x-confirm-modal>` | `components/confirm-modal.blade.php` |
@@ -90,14 +95,56 @@ Jika butuh variant baru (mis. warna/size berbeda), EXTEND komponen yang ada via 
 - Tombol aksi: `<x-loading-button>` (WAJIB di SETIAP klik, ada loadingText + wire:target).
   Setiap action button WAJIB punya `wire:key` yang unik untuk mencegah konflik Livewire re-render.
   Contoh: `wire:key="btn-save-{{ $item->id }}"`.
-  Untuk tombol di dalam loop tabel, WAJIB sertakan ID item di wire:key dan wire:target.
+  Untuk tombol di dalam loop tabel (`@forelse`/`@foreach`), WAJIB sertakan ID item di wire:key DAN wire:target.
+  Tanpa wire:key, saat item dihapus dari loop, Livewire DOM-diff bisa mencocokkan button item A dengan item B → loading spinner muter di button salah.
   Contoh: `wire:click="edit({{ $item->id }})"` + `wire:target="edit({{ $item->id }})"` + `wire:key="btn-edit-{{ $item->id }}"`.
+  Konvensi naming wire:key: `btn-{action}-{id}` (button), `toggle-{action}-{id}` (toggle switch).
+- `<x-loading-button>` variants:
+  - Filled: `primary`, `success`, `danger`, `warning`, `secondary` (background berwarna).
+  - Icon-only: `icon-blue`, `icon-red`, `icon-green`, `icon-amber`, `icon-gray` (text berwarna + subtle hover bg, padding p-1.5).
+  - Built-in `icon` prop (string, pakai outline Heroicons): `edit`, `delete`, `view`, `reset`, `check`, `close`, `external`, `plus`, `send`, `download`, `pdf`, `excel`.
+    Contoh: `<x-loading-button wire:click="edit({{ $item->id }})" target="edit({{ $item->id }})" variant="icon-blue" icon="edit" wire:key="btn-edit-{{ $item->id }}" title="Edit" />`.
+  - Custom icon via slot `<x-slot:icon>` masih didukung untuk ikon non-builtin.
+  - Prop `iconClass` untuk override ukuran ikon (default `w-5 h-5` icon-only, `w-4 h-4` filled).
+- Toggle switch: `<x-toggle-switch>` (WAJIB untuk status active/inactive toggle).
+  Props: `active` (bool), `target` (wire target untuk loading), `disabled` (bool), `title`, `activeColor` (blue/green/red/amber, default blue).
+  Contoh: `<x-toggle-switch wire:click="toggleActive({{ $user->id }})" :active="$user->is_active" target="toggleActive({{ $user->id }})" :disabled="$user->id == auth()->id()" title="Aktifkan/Nonaktifkan" />`.
 - Batal: `<x-cancel-button>`. Hapus: `<x-delete-modal>`. Konfirmasi: `<x-confirm-modal>`.
 - Select: `<x-searchable-select>` / `<x-multi-searchable-select>`. Filter: `<x-filter-popover>`.
 - Form field: `<x-input-label>`, `<x-text-input>`, `<x-input-error>`.
 - WAJIB dukung dark mode (kelas `dark:...`), spacing/typography konsisten dengan menu sejenis.
 - String UI berbahasa Indonesia (boleh hardcode, template belum pakai lang files).
 - Breadcrumb WAJIB di full-page form (mis. Master Data > Modul > Edit).
+- DILARANG menulis raw `<button wire:click>` dengan SVG spinner manual. SELALU pakai `<x-loading-button>` agar DRY.
+
+## Livewire & Blade Gotchas (pelajaran dari bug fix — WAJIB dihindari)
+1. **`wire:loading.class` syntax (Livewire v3)**:
+   - BENAR: `wire:loading.class="hidden"` (menambah class `hidden` saat loading).
+   - SALAH: `wire:loading.class.add="hidden"` — directive `.add` TIDAK ada di Livewire v3, tidak error tapi tidak bekerja → elemen tidak di-hide saat loading.
+   - Untuk remove class: `wire:loading.class.remove="inline-block"` (ini valid).
+2. **PHP string interpolation TIDAK mendukung expression**:
+   - SALAH: `"class=\"{$isDisabled ? 'opacity-50' : ''}\""` → ParseError (unexpected `?`).
+   - BENAR: ekstrak ke variabel dulu di blok `@php`: `$disabledClass = $isDisabled ? 'opacity-50' : '';` lalu `"class=\"{$disabledClass}\""`.
+   - `{$...}` hanya support simple variable (`$var`, `$arr['key']`, `$obj->prop`), BUKAN ternary/function call.
+3. **`wire:loading` + `display: flex` conflict**:
+   - `wire:loading` mengeset inline style `display: ''` (string kosong) saat shown. Inline style **meng-override** Tailwind class `flex`.
+   - Akibatnya: span dengan `class="flex items-center justify-center"` + `wire:loading` → saat shown jadi `display: inline` (bukan flex) → `items-center justify-center` tidak berfungsi → konten tidak ter-center.
+   - SOLUSI: jangan bungkus konten yang perlu flex centering di span dengan `wire:loading`. Taruh `wire:loading` langsung pada elemen konten (SVG), jadikan flex child — di-center oleh parent button's `items-center justify-center`.
+4. **Toggle switch positioning pattern (WAJIB ikuti pola ini)**:
+   - Button: `relative inline-flex h-6 w-11 items-center justify-center` (center flex children).
+   - Knob: `absolute top-1/2 left-0 -translate-y-1/2` + `translate-x-1`/`translate-x-6` (out of flex flow, positioned absolute). Tambah `wire:loading.class="hidden"` untuk hide saat loading.
+   - Spinner: flex child langsung dengan `wire:loading` (di-center oleh button). Tidak perlu wrapper span.
+   - Spinner color dinamis: `text-white` saat active (bg berwarna), `text-gray-600 dark:text-gray-300` saat inactive (bg abu).
+5. **Component slot vs prop conflict**:
+   - Prop `icon` dan slot `<x-slot:icon>` mengisi variabel `$icon` yang SAMA di Blade component, tapi dengan tipe berbeda (string vs `ComponentSlot` object).
+   - Deteksi dengan: `$hasIconProp = is_string($icon) && filled($icon);` dan `$hasIconSlot = $icon instanceof \Illuminate\View\ComponentSlot && !$icon->isEmpty();`.
+   - JANGAN pakai `isset($iconSlot)` — variabel `$iconSlot` TIDAK ADA (Livewire/Blade tidak membuat `{slotName}Slot`).
+   - JANGAN pakai `filled($icon)` saja — `ComponentSlot` juga filled, bisa salah terdeteksi sebagai prop string → `isset($builtinIcons[$icon])` error karena object sebagai array key.
+6. **`wire:key` WAJIB untuk semua action button di loop**:
+   - Tanpa `wire:key`, saat item dihapus dari loop, Livewire DOM-diff mencocokkan button berdasarkan urutan → button posisi ke-3 (sebelumnya item C) sekarang jadi item D, tapi Livewire mengira masih item C → loading spinner muter di button salah.
+   - Konvensi: `wire:key="btn-{action}-{id}"` (button), `wire:key="toggle-{action}-{id}"` (toggle switch).
+   - Parent loop (`<tr>`, `<div>`) juga WAJIB punya `wire:key="row-{id}"` / `wire:key="item-{id}"`.
+   - Button di luar loop (header action: export, create, save) TIDAK perlu `wire:key` (hanya 1 instance, tidak ada risk mismatch).
 
 # File Storage (pola WAJIB)
 Alur async via worker (JANGAN simpan file langsung di request):

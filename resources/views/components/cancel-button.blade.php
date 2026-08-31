@@ -1,7 +1,7 @@
 @props([
     'target' => null,
     'label' => 'Batal',
-    'loadingText' => 'Memuat...',
+    'loadingText' => 'loading...',
     'icon' => false,
     'size' => 'lg',
 ])
@@ -30,6 +30,7 @@
 @if($target)
     <button
         x-data="{ loading: false }"
+        @mousedown.prevent
         @click="loading = true; setTimeout(() => loading = false, 300)"
         :disabled="loading"
         {{ $attributes->merge(['type' => 'button', 'class' => $baseClass]) }}
@@ -55,6 +56,7 @@
     </button>
 @else
     <button
+        @mousedown.prevent
         {{ $attributes->merge(['type' => 'button', 'class' => $baseClass]) }}
     >
         @if($icon)

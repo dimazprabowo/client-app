@@ -80,12 +80,11 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @can('configuration_update')
-                                    <button wire:click="toggleActive({{ $config->id }})" 
-                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                            {{ $config->is_active ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700' }}">
-                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                            {{ $config->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
-                                    </button>
+                                    <x-toggle-switch wire:click="toggleActive({{ $config->id }})"
+                                        :active="$config->is_active"
+                                        target="toggleActive({{ $config->id }})"
+                                        wire:key="toggle-active-{{ $config->id }}"
+                                        title="Aktifkan/Nonaktifkan" />
                                 @else
                                     <span class="px-2 py-1 text-xs font-medium rounded-full {{ $config->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' }}">
                                         {{ $config->is_active ? 'Aktif' : 'Nonaktif' }}
@@ -95,19 +94,11 @@
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end gap-2">
                                     @can('configuration_update')
-                                        <button wire:click="edit({{ $config->id }})"
-                                            wire:loading.attr="disabled"
-                                            wire:target="edit({{ $config->id }})"
-                                            class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
-                                            title="Edit">
-                                            <svg wire:loading.class="hidden" wire:target="edit({{ $config->id }})" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                            </svg>
-                                            <svg wire:loading wire:target="edit({{ $config->id }})" class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                        </button>
+                                        <x-loading-button wire:click="edit({{ $config->id }})"
+                                            target="edit({{ $config->id }})"
+                                            variant="icon-blue" icon="edit"
+                                            wire:key="btn-edit-{{ $config->id }}"
+                                            title="Edit" />
                                     @endcan
                                 </div>
                             </td>

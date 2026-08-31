@@ -126,14 +126,12 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @can('users_update')
-                                    <button wire:click="toggleActive({{ $user->id }})" 
-                                        @if($user->id == auth()->id()) disabled title="Tidak dapat menonaktifkan akun sendiri" @endif
-                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                            {{ $user->is_active ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700' }}
-                                            {{ $user->id == auth()->id() ? 'opacity-50 cursor-not-allowed' : '' }}">
-                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                            {{ $user->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
-                                    </button>
+                                    <x-toggle-switch wire:click="toggleActive({{ $user->id }})"
+                                        :active="$user->is_active"
+                                        target="toggleActive({{ $user->id }})"
+                                        :disabled="$user->id == auth()->id()"
+                                        wire:key="toggle-active-{{ $user->id }}"
+                                        title="{{ $user->id == auth()->id() ? 'Tidak dapat menonaktifkan akun sendiri' : 'Aktifkan/Nonaktifkan' }}" />
                                 @else
                                     <span class="inline-flex items-center whitespace-nowrap px-2 py-1 text-xs font-medium rounded-full {{ $user->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' }}">
                                         {{ $user->is_active ? 'Aktif' : 'Nonaktif' }}
@@ -143,48 +141,24 @@
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end gap-2">
                                     @can('users_update')
-                                        <button wire:key="edit-btn-{{ $user->id }}"
-                                            wire:click="edit({{ $user->id }})"
-                                            wire:loading.attr="disabled"
-                                            class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
-                                            title="Edit">
-                                            <svg wire:loading.remove wire:target="edit({{ $user->id }})" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                            </svg>
-                                            <svg wire:loading wire:target="edit({{ $user->id }})" class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                        </button>
-                                        <button wire:key="reset-btn-{{ $user->id }}"
-                                            wire:click="openResetPasswordModal({{ $user->id }})"
-                                            wire:loading.attr="disabled"
-                                            class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 disabled:opacity-50"
-                                            title="Reset Password">
-                                            <svg wire:loading.remove wire:target="openResetPasswordModal({{ $user->id }})" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                                            </svg>
-                                            <svg wire:loading wire:target="openResetPasswordModal({{ $user->id }})" class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                        </button>
+                                        <x-loading-button wire:click="edit({{ $user->id }})"
+                                            target="edit({{ $user->id }})"
+                                            variant="icon-blue" icon="edit"
+                                            wire:key="btn-edit-{{ $user->id }}"
+                                            title="Edit" />
+                                        <x-loading-button wire:click="openResetPasswordModal({{ $user->id }})"
+                                            target="openResetPasswordModal({{ $user->id }})"
+                                            variant="icon-amber" icon="reset"
+                                            wire:key="btn-reset-{{ $user->id }}"
+                                            title="Reset Password" />
                                     @endcan
                                     @can('users_delete')
                                         @if($user->id != auth()->id())
-                                            <button wire:key="delete-btn-{{ $user->id }}"
-                                                wire:click="confirmDelete({{ $user->id }})"
-                                                wire:loading.attr="disabled"
-                                                class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
-                                                title="Hapus">
-                                                <svg wire:loading.remove wire:target="confirmDelete({{ $user->id }})" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                </svg>
-                                                <svg wire:loading wire:target="confirmDelete({{ $user->id }})" class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                            </button>
+                                            <x-loading-button wire:click="confirmDelete({{ $user->id }})"
+                                                target="confirmDelete({{ $user->id }})"
+                                                variant="icon-red" icon="delete"
+                                                wire:key="btn-delete-{{ $user->id }}"
+                                                title="Hapus" />
                                         @endif
                                     @endcan
                                 </div>
