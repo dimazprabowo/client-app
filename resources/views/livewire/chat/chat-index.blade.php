@@ -2,7 +2,7 @@
      wire:poll.visible.10s
      x-data="{
          typingUser: null,
-         showMobileList: true,
+         showMobileList: null,
      }"
      @user-typing.window="
          if ($event.detail.is_typing) {
@@ -13,8 +13,12 @@
      ">
 
     {{-- Left Panel: Chat List --}}
-    <div class="w-full md:w-80 lg:w-96 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0"
-         :class="{ 'hidden md:flex': !showMobileList && {{ $activeChatId ? 'true' : 'false' }} }">
+    {{-- Static class already matches server state ($activeChatId), used until user manually toggles (showMobileList !== null).
+         x-data is intentionally kept STATIC (no PHP interpolation) — wire:poll re-renders this component every
+         10s, and embedding server state inside x-data caused Alpine's scope to desync with Livewire's morph
+         after repeated re-renders (the mobile "back" button would stop responding). --}}
+    <div class="w-full md:w-80 lg:w-96 border-r border-gray-200 dark:border-gray-700 flex-col flex-shrink-0 {{ $activeChatId ? 'hidden md:flex' : 'flex' }}"
+         :class="showMobileList === null ? {} : { 'hidden md:flex': !showMobileList, 'flex': showMobileList }">
 
         {{-- Search Header --}}
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
@@ -42,7 +46,7 @@
                                class="w-full text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
 
                         @if($searchResults->count() > 0)
-                            <div class="mt-2 max-h-48 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+                            <div class="mt-2 max-h-48 overflow-y-auto custom-scrollbar divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach($searchResults as $user)
                                     <button wire:click="startDirectChat({{ $user->id }})"
                                             @click="showNew = false; showMobileList = false"
@@ -77,7 +81,7 @@
         </div>
 
         {{-- Chat List --}}
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex-1 overflow-y-auto custom-scrollbar">
             @forelse($chats as $chat)
                 @php
                     $unread = $unreadCounts[$chat->id] ?? 0;
@@ -148,8 +152,9 @@
     </div>
 
     {{-- Right Panel: Conversation --}}
-    <div class="flex-1 flex flex-col min-w-0"
-         :class="{ 'hidden md:flex': showMobileList }">
+    {{-- Static class already matches server state ($activeChatId); Alpine only overrides after user interacts --}}
+    <div class="flex-1 flex-col min-w-0 {{ $activeChatId ? 'flex' : 'hidden md:flex' }}"
+         :class="showMobileList === null ? {} : { 'hidden md:flex': showMobileList, 'flex': !showMobileList }">
 
         @if($activeChat)
             {{-- Chat Header --}}
@@ -194,7 +199,7 @@
             </div>
 
             {{-- Messages --}}
-            <div class="flex-1 overflow-y-auto px-4 py-4 space-y-3"
+            <div class="flex-1 overflow-y-auto custom-scrollbar px-4 py-4 space-y-3"
                  id="chat-messages"
                  x-ref="chatMessages"
                  x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)">
@@ -306,8 +311,8 @@
                                               @keydown.escape="$wire.cancelEdit()"
                                               @keydown.ctrl.enter.prevent="$wire.updateMessage()"
                                               rows="2"
-                                              class="w-full text-sm rounded-lg border-blue-400/30 bg-blue-700/50 text-white placeholder-blue-300/50 focus:ring-blue-300 focus:border-blue-300 resize-none"
-                                              style="min-height: 36px; max-height: 100px;"></textarea>
+                                              class="w-full text-sm rounded-lg border-blue-400/30 bg-blue-700/50 text-white placeholder-blue-300/50 focus:ring-blue-300 focus:border-blue-300 resize-none custom-scrollbar"
+                                              style="min-height: 36px; max-height: 100px; overflow-y: auto;"></textarea>
                                     <div class="flex items-center justify-between mt-2">
                                         <div class="flex items-center gap-1.5">
                                             <button wire:click="cancelEdit" x-data="{ loading: false }" @click="loading = true" :disabled="loading"
@@ -446,7 +451,7 @@
                               @input="resize()"
                               placeholder="Ketik pesan... (Ctrl+Enter untuk kirim)"
                               rows="1"
-                              class="flex-1 text-sm rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 resize-none py-2.5 px-4"
+                              class="flex-1 text-sm rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 resize-none py-2.5 px-4 custom-scrollbar"
                               style="min-height: 40px; max-height: 120px; overflow-y: auto;"></textarea>
                     <button type="submit"
                             class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors disabled:opacity-50"
