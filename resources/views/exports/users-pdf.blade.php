@@ -15,6 +15,9 @@
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; }
         .badge-active { background-color: #dcfce7; color: #166534; }
         .badge-inactive { background-color: #fee2e2; color: #991b1b; }
+        .badge-pending { background-color: #fef9c3; color: #854d0e; }
+        .badge-approved { background-color: #dcfce7; color: #166534; }
+        .badge-rejected { background-color: #fee2e2; color: #991b1b; }
         .footer { text-align: right; margin-top: 15px; font-size: 9px; color: #9ca3af; }
     </style>
 </head>
@@ -28,13 +31,14 @@
         <thead>
             <tr>
                 <th style="width: 5%;">No</th>
-                <th style="width: 20%;">Nama</th>
-                <th style="width: 20%;">Email</th>
+                <th style="width: 18%;">Nama</th>
+                <th style="width: 18%;">Email</th>
                 <th style="width: 10%;">Telepon</th>
                 <th style="width: 10%;">Role</th>
-                <th style="width: 18%;">Perusahaan</th>
+                <th style="width: 14%;">Perusahaan</th>
+                <th style="width: 10%;">Approval</th>
                 <th style="width: 8%;">Status</th>
-                <th style="width: 9%;">Tgl Dibuat</th>
+                <th style="width: 7%;">Tgl Dibuat</th>
             </tr>
         </thead>
         <tbody>
@@ -51,6 +55,11 @@
                     <td>{{ $user->phone ?? '-' }}</td>
                     <td>{{ ucfirst($user->getRoleNames()->join(', ') ?: 'No Role') }}</td>
                     <td>{{ $user->company->name ?? '-' }}</td>
+                    <td>
+                        <span class="badge badge-{{ $user->approval_status->value }}">
+                            {{ $user->approval_status->label() }}
+                        </span>
+                    </td>
                     <td>
                         <span class="badge {{ $user->is_active ? 'badge-active' : 'badge-inactive' }}">
                             {{ $user->is_active ? 'Aktif' : 'Nonaktif' }}

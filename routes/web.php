@@ -1,8 +1,8 @@
 <?php
 
 use App\Livewire\Actions\Logout;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 // Public Routes
 Route::redirect('/', '/login');
@@ -10,12 +10,13 @@ Route::redirect('/', '/login');
 // Logout Route (must be authenticated)
 Route::post('/logout', function (Request $request, Logout $logout) {
     $logout();
+
     return redirect('/');
 })->middleware('auth')->name('logout');
 
 // Authenticated Routes
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
-    
+
     // Dashboard
     Route::view('/dashboard', 'pages.dashboard')->name('dashboard');
 

@@ -1,4 +1,21 @@
 <div>
+    @if($pendingCount > 0)
+        <div class="mb-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 px-4 py-3 flex items-center gap-3">
+            <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                    {{ $pendingCount }} pendaftaran menunggu approval
+                </p>
+            </div>
+            <button wire:click="$set('approvalStatusFilter', 'pending')" wire:loading.attr="disabled"
+                class="text-sm font-medium text-yellow-800 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-200 underline">
+                Lihat daftar
+            </button>
+        </div>
+    @endif
+
     <div class="mb-6 flex flex-col md:flex-row md:items-center gap-3">
         <!-- Search -->
         <div class="flex-1 w-full md:w-auto">
@@ -7,13 +24,22 @@
         </div>
 
         <!-- Filter Popover -->
-        <x-filter-popover :filters="['isActiveFilter', 'roleFilter']">
+        <x-filter-popover :filters="['isActiveFilter', 'roleFilter', 'approvalStatusFilter']">
             <div>
                 <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Status Aktif</label>
                 <x-searchable-select
                     wire:model.live="isActiveFilter"
                     :options="$this->isActiveOptions"
                     placeholder="Semua Status"
+                    searchPlaceholder="Cari status..."
+                />
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Status Approval</label>
+                <x-searchable-select
+                    wire:model.live="approvalStatusFilter"
+                    :options="$this->approvalStatusOptions"
+                    placeholder="Semua Approval"
                     searchPlaceholder="Cari status..."
                 />
             </div>
@@ -66,6 +92,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Approval</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
                     </tr>
@@ -125,6 +152,16 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center whitespace-nowrap px-2 py-1 text-xs font-medium rounded-full {{ $user->approval_status->badgeClass() }}">
+                                    {{ $user->approval_status->label() }}
+                                </span>
+                                @if($user->is_rejected && $user->rejection_reason)
+                                    <div class="mt-1 text-xs text-red-600 dark:text-red-400 max-w-xs truncate" title="{{ $user->rejection_reason }}">
+                                        {{ $user->rejection_reason }}
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
                                 @can('users_update')
                                     <x-toggle-switch wire:click="toggleActive({{ $user->id }})"
                                         :active="$user->is_active"
@@ -140,6 +177,24 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end gap-2">
+                                    @can('approve', $user)
+                                        @if($user->is_pending)
+                                            <x-loading-button wire:click="openApproveModal({{ $user->id }})"
+                                                target="openApproveModal({{ $user->id }})"
+                                                variant="icon-green" icon="check"
+                                                wire:key="btn-approve-{{ $user->id }}"
+                                                title="Setujui Pendaftaran" />
+                                        @endif
+                                    @endcan
+                                    @can('reject', $user)
+                                        @if($user->is_pending)
+                                            <x-loading-button wire:click="openRejectModal({{ $user->id }})"
+                                                target="openRejectModal({{ $user->id }})"
+                                                variant="icon-red" icon="close"
+                                                wire:key="btn-reject-{{ $user->id }}"
+                                                title="Tolak Pendaftaran" />
+                                        @endif
+                                    @endcan
                                     @can('users_update')
                                         <x-loading-button wire:click="edit({{ $user->id }})"
                                             target="edit({{ $user->id }})"
@@ -166,7 +221,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="7" class="px-6 py-12 text-center">
                                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
                                 </svg>
@@ -334,7 +389,7 @@
     <x-reset-password-modal :show="$showResetPasswordModal" />
 
     <!-- Delete Confirmation Modal -->
-    <x-delete-modal 
+    <x-delete-modal
         :show="$showDeleteModal"
         wire:model="showDeleteModal"
         title="Hapus User"
@@ -342,4 +397,106 @@
         :itemName="$deletingUserName"
         confirmMethod="delete"
     />
+
+    <!-- Approve User Modal -->
+    @if($showApproveModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75" @click="$wire.set('showApproveModal', false)"></div>
+                <div class="inline-block align-bottom w-full bg-white dark:bg-gray-800 rounded-lg text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="flex items-start gap-4">
+                            <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/20">
+                                <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                                    Setujui Pendaftaran User
+                                </h3>
+                                <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                    <p>Anda akan menyetujui pendaftaran user berikut:</p>
+                                    <div class="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                                        <p class="font-medium text-gray-900 dark:text-white">{{ $approvingUserName }}</p>
+                                        <p class="text-gray-500 dark:text-gray-400">{{ $approvingUserEmail }}</p>
+                                    </div>
+                                    <p class="mt-3">User akan langsung aktif dan dapat login ke sistem.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                        <button wire:click="approveUser"
+                            class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-base font-medium rounded-lg shadow-sm transition-all w-full sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed"
+                            wire:loading.attr="disabled"
+                            wire:loading.class="opacity-70 cursor-not-allowed"
+                            wire:target="approveUser">
+                            <svg wire:loading wire:target="approveUser" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Setujui
+                        </button>
+                        <x-cancel-button wire:click="$set('showApproveModal', false)" target="closeApproveModal" wire:key="btn-approve-cancel" variant="secondary" size="lg" class="mt-3 sm:mt-0 w-full sm:w-auto" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Reject User Modal -->
+    @if($showRejectModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75" @click="$wire.set('showRejectModal', false)"></div>
+                <div class="inline-block align-bottom w-full bg-white dark:bg-gray-800 rounded-lg text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <form wire:submit="rejectUser">
+                        <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20">
+                                    <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                                        Tolak Pendaftaran User
+                                    </h3>
+                                    <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        <p>Anda akan menolak pendaftaran user berikut:</p>
+                                        <div class="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                                            <p class="font-medium text-gray-900 dark:text-white">{{ $rejectingUserName }}</p>
+                                            <p class="text-gray-500 dark:text-gray-400">{{ $rejectingUserEmail }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4">
+                                        <x-input-label for="rejectionReason" value="Alasan Penolakan" :required="true" />
+                                        <textarea wire:model="rejectionReason" id="rejectionReason" rows="3"
+                                            placeholder="Tuliskan alasan penolakan (min. 5 karakter)..."
+                                            class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"></textarea>
+                                        <x-input-error :messages="$errors->get('rejectionReason')" class="mt-2" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                            <button type="submit"
+                                class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-base font-medium rounded-lg shadow-sm transition-all w-full sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed"
+                                wire:loading.attr="disabled"
+                                wire:loading.class="opacity-70 cursor-not-allowed"
+                                wire:target="rejectUser">
+                                <svg wire:loading wire:target="rejectUser" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                Tolak Pendaftaran
+                            </button>
+                            <x-cancel-button wire:click="$set('showRejectModal', false)" target="closeRejectModal" wire:key="btn-reject-cancel" variant="secondary" size="lg" class="mt-3 sm:mt-0 w-full sm:w-auto" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

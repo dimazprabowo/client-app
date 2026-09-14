@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Settings;
 
+use App\Enums\UserApprovalStatus;
 use App\Exports\UsersExport;
 use App\Livewire\Traits\HasNotification;
 use App\Models\Company;
@@ -15,40 +16,82 @@ use Spatie\Permission\Models\Role;
 
 class UserManagement extends Component
 {
-    use WithPagination, AuthorizesRequests, HasNotification;
+    use AuthorizesRequests, HasNotification, WithPagination;
 
     protected $paginationTheme = 'tailwind';
 
     public $search = '';
+
     public $roleFilter = '';
+
     public $isActiveFilter = '';
+
+    public $approvalStatusFilter = '';
+
     public int $perPage = 10;
+
     public bool $filterChanged = false;
+
     public $showModal = false;
+
     public $editMode = false;
-    
+
     // Form fields
     public $userId;
+
     public $name;
+
     public $email;
+
     public $password;
+
     public $password_confirmation;
+
     public $company_id;
+
     public $phone;
+
     public $position;
+
     public $is_active = true;
+
     public $selectedRoles = [];
-    
+
     // Reset Password Modal
     public $showResetPasswordModal = false;
+
     public $resetUserId;
+
     public $newPassword;
+
     public $newPasswordConfirmation;
-    
+
     // Delete Modal
     public $showDeleteModal = false;
+
     public $deletingUserId;
+
     public $deletingUserName;
+
+    // Approve Modal
+    public $showApproveModal = false;
+
+    public $approvingUserId;
+
+    public $approvingUserName;
+
+    public $approvingUserEmail;
+
+    // Reject Modal
+    public $showRejectModal = false;
+
+    public $rejectingUserId;
+
+    public $rejectingUserName;
+
+    public $rejectingUserEmail;
+
+    public $rejectionReason;
 
     public function mount()
     {
@@ -59,7 +102,7 @@ class UserManagement extends Component
     {
         $rules = [
             'name' => 'required|string|max:255',
-            'email' => ['required', 'email', $this->editMode ? 'unique:users,email,' . $this->userId : 'unique:users,email'],
+            'email' => ['required', 'email', $this->editMode ? 'unique:users,email,'.$this->userId : 'unique:users,email'],
             'company_id' => 'nullable|exists:companies,id',
             'phone' => 'nullable|string|max:20',
             'position' => 'nullable|string|max:100',
@@ -68,7 +111,7 @@ class UserManagement extends Component
             'selectedRoles.*' => 'exists:roles,name',
         ];
 
-        if (!$this->editMode) {
+        if (! $this->editMode) {
             $rules['password'] = 'required|string|min:8|confirmed';
         } elseif ($this->password) {
             $rules['password'] = 'string|min:8|confirmed';
@@ -95,6 +138,12 @@ class UserManagement extends Component
         $this->filterChanged = true;
     }
 
+    public function updatingApprovalStatusFilter()
+    {
+        $this->resetPage();
+        $this->filterChanged = true;
+    }
+
     public function updatingPerPage()
     {
         $this->resetPage();
@@ -105,6 +154,7 @@ class UserManagement extends Component
     {
         $this->roleFilter = '';
         $this->isActiveFilter = '';
+        $this->approvalStatusFilter = '';
         $this->resetPage();
         $this->filterChanged = true;
         $this->notifySuccess('Filter berhasil direset.');
@@ -126,6 +176,14 @@ class UserManagement extends Component
         ];
     }
 
+    public function getApprovalStatusOptionsProperty(): array
+    {
+        return collect(UserApprovalStatus::cases())->map(fn ($status) => [
+            'value' => $status->value,
+            'label' => $status->label(),
+        ])->toArray();
+    }
+
     public function create()
     {
         $this->authorize('create', User::class);
@@ -139,7 +197,7 @@ class UserManagement extends Component
     {
         $user = User::with('roles')->findOrFail($id);
         $this->authorize('update', $user);
-        
+
         $this->userId = $user->id;
         $this->name = $user->name;
         $this->email = $user->email;
@@ -148,7 +206,7 @@ class UserManagement extends Component
         $this->position = $user->position;
         $this->is_active = $user->is_active;
         $this->selectedRoles = $user->getRoleNames()->toArray();
-        
+
         $this->editMode = true;
         $this->showModal = true;
     }
@@ -231,7 +289,7 @@ class UserManagement extends Component
             $this->authorize('toggleActive', $user);
 
             $service->toggleActive($user);
-            
+
             $status = $user->is_active ? 'diaktifkan' : 'dinonaktifkan';
             $this->notifySuccess("User berhasil {$status}!");
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
@@ -271,7 +329,7 @@ class UserManagement extends Component
             $this->authorize('resetPassword', $user);
 
             $service->resetPassword($user, $this->newPassword);
-            
+
             $this->notifySuccess('Password berhasil direset!');
             $this->closeResetPasswordModal();
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
@@ -307,16 +365,108 @@ class UserManagement extends Component
             'is_active',
             'selectedRoles',
         ]);
-        
+
         $this->is_active = true;
+    }
+
+    // ===== Approval Methods =====
+
+    public function openApproveModal($id)
+    {
+        $user = User::findOrFail($id);
+        $this->authorize('approve', $user);
+
+        $this->approvingUserId = $user->id;
+        $this->approvingUserName = $user->name;
+        $this->approvingUserEmail = $user->email;
+        $this->showApproveModal = true;
+    }
+
+    public function approveUser(UserService $service)
+    {
+        try {
+            $user = User::findOrFail($this->approvingUserId);
+            $this->authorize('approve', $user);
+
+            $service->approveUser($user, auth()->user());
+
+            $this->notifySuccess("User {$user->name} berhasil disetujui!");
+            $this->closeApproveModal();
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            $this->notifyError('Anda tidak memiliki izin untuk menyetujui pendaftaran ini.');
+        } catch (\DomainException $e) {
+            $this->notifyError($e->getMessage());
+        } catch (\Exception $e) {
+            $this->notifyError('Terjadi kesalahan sistem. Silakan coba lagi.');
+        }
+    }
+
+    public function closeApproveModal()
+    {
+        $this->showApproveModal = false;
+        $this->reset(['approvingUserId', 'approvingUserName', 'approvingUserEmail']);
+    }
+
+    public function openRejectModal($id)
+    {
+        $user = User::findOrFail($id);
+        $this->authorize('reject', $user);
+
+        $this->rejectingUserId = $user->id;
+        $this->rejectingUserName = $user->name;
+        $this->rejectingUserEmail = $user->email;
+        $this->rejectionReason = '';
+        $this->showRejectModal = true;
+    }
+
+    public function rejectUser(UserService $service)
+    {
+        try {
+            $this->validate([
+                'rejectionReason' => 'required|string|min:5|max:500',
+            ], [
+                'rejectionReason.required' => 'Alasan penolakan wajib diisi',
+                'rejectionReason.min' => 'Alasan penolakan minimal 5 karakter',
+                'rejectionReason.max' => 'Alasan penolakan maksimal 500 karakter',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->notifyValidationError($e);
+            throw $e;
+        }
+
+        try {
+            $user = User::findOrFail($this->rejectingUserId);
+            $this->authorize('reject', $user);
+
+            $service->rejectUser($user, auth()->user(), $this->rejectionReason);
+
+            $this->notifySuccess("User {$user->name} telah ditolak.");
+            $this->closeRejectModal();
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            $this->notifyError('Anda tidak memiliki izin untuk menolak pendaftaran ini.');
+        } catch (\DomainException $e) {
+            $this->notifyError($e->getMessage());
+        } catch (\Exception $e) {
+            $this->notifyError('Terjadi kesalahan sistem. Silakan coba lagi.');
+        }
+    }
+
+    public function closeRejectModal()
+    {
+        $this->showRejectModal = false;
+        $this->reset(['rejectingUserId', 'rejectingUserName', 'rejectingUserEmail', 'rejectionReason']);
     }
 
     public function exportExcel()
     {
         $this->authorize('exportExcel', User::class);
 
-        return (new UsersExport($this->search, $this->roleFilter, $this->isActiveFilter !== '' ? $this->isActiveFilter : null))
-            ->download('users-' . now()->format('Y-m-d-His') . '.xlsx');
+        return (new UsersExport(
+            $this->search,
+            $this->roleFilter,
+            $this->isActiveFilter !== '' ? $this->isActiveFilter : null,
+            $this->approvalStatusFilter !== '' ? $this->approvalStatusFilter : null
+        ))->download('users-'.now()->format('Y-m-d-His').'.xlsx');
     }
 
     public function exportPdf(UserService $service)
@@ -327,6 +477,7 @@ class UserManagement extends Component
             $this->search,
             $this->roleFilter,
             $this->isActiveFilter !== '' ? $this->isActiveFilter : null,
+            $this->approvalStatusFilter !== '' ? $this->approvalStatusFilter : null,
             perPage: 9999
         );
 
@@ -334,8 +485,8 @@ class UserManagement extends Component
         $pdf->setPaper('a4', 'landscape');
 
         return response()->streamDownload(
-            fn () => print($pdf->output()),
-            'users-' . now()->format('Y-m-d-His') . '.pdf'
+            fn () => print ($pdf->output()),
+            'users-'.now()->format('Y-m-d-His').'.pdf'
         );
     }
 
@@ -345,8 +496,11 @@ class UserManagement extends Component
             $this->search,
             $this->roleFilter,
             $this->isActiveFilter !== '' ? $this->isActiveFilter : null,
+            $this->approvalStatusFilter !== '' ? $this->approvalStatusFilter : null,
             $this->perPage
         );
+
+        $pendingCount = $service->getPendingApprovalCount();
 
         if ($this->filterChanged) {
             $this->notifySuccess("Ditemukan {$users->total()} data user.");
@@ -357,6 +511,7 @@ class UserManagement extends Component
             'users' => $users,
             'roles' => Role::all(),
             'companies' => Company::orderBy('name')->get(),
+            'pendingCount' => $pendingCount,
         ]);
     }
 }

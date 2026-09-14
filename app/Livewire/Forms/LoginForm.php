@@ -2,10 +2,11 @@
 
 namespace App\Livewire\Forms;
 
+use App\Enums\UserApprovalStatus;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Validate;
@@ -26,7 +27,7 @@ class LoginForm extends Form
 
     /**
      * Attempt to authenticate the request's credentials.
-     * 
+     *
      * Flow:
      * 1. Verify reCAPTCHA (FIRST - most important security check)
      * 2. Check rate limiting
@@ -41,7 +42,7 @@ class LoginForm extends Form
         if (config('services.recaptcha.enabled')) {
             $this->verifyRecaptcha();
         }
-        
+
         // STEP 2: Check rate limiting (after reCAPTCHA to prevent abuse)
         $this->ensureIsNotRateLimited();
 
@@ -55,12 +56,20 @@ class LoginForm extends Form
             ]);
         }
 
-        // STEP 4: Check if user is active
-        if (! Auth::user()->is_active) {
+        // STEP 4: Check if user is active (with approval-aware messaging)
+        $user = Auth::user();
+
+        if (! $user->is_active) {
             Auth::logout();
 
+            $message = match ($user->approval_status) {
+                UserApprovalStatus::Pending => 'Akun Anda masih menunggu approval administrator. Silakan hubungi administrator.',
+                UserApprovalStatus::Rejected => 'Akun Anda telah ditolak oleh administrator. Silakan hubungi administrator.',
+                default => 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.',
+            };
+
             throw ValidationException::withMessages([
-                'form.email' => 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.',
+                'form.email' => $message,
             ]);
         }
 
@@ -90,7 +99,7 @@ class LoginForm extends Form
                 'remoteip' => request()->ip(),
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 throw ValidationException::withMessages([
                     'form.recaptcha_token' => 'Gagal menghubungi server reCAPTCHA. Silakan coba lagi.',
                 ]);
@@ -99,13 +108,13 @@ class LoginForm extends Form
             $result = $response->json();
 
             // Check if verification was successful
-            if (!isset($result['success']) || !$result['success']) {
+            if (! isset($result['success']) || ! $result['success']) {
                 $errorCodes = $result['error-codes'] ?? [];
                 \Log::error('reCAPTCHA v2 verification failed', [
                     'error_codes' => $errorCodes,
-                    'token' => substr($this->recaptcha_token, 0, 20) . '...'
+                    'token' => substr($this->recaptcha_token, 0, 20).'...',
                 ]);
-                
+
                 throw ValidationException::withMessages([
                     'form.recaptcha_token' => 'Verifikasi reCAPTCHA gagal. Silakan coba lagi.',
                 ]);
@@ -115,14 +124,14 @@ class LoginForm extends Form
             // Log successful verification
             \Log::info('reCAPTCHA v2 verification successful', [
                 'ip' => request()->ip(),
-                'hostname' => $result['hostname'] ?? 'unknown'
+                'hostname' => $result['hostname'] ?? 'unknown',
             ]);
-            
+
         } catch (\Illuminate\Http\Client\RequestException $e) {
             \Log::error('reCAPTCHA request failed', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            
+
             throw ValidationException::withMessages([
                 'form.recaptcha_token' => 'Gagal verifikasi reCAPTCHA. Silakan coba lagi.',
             ]);

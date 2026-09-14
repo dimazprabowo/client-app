@@ -62,7 +62,7 @@ class AppServiceProvider extends ServiceProvider
     private function applySystemConfigurations(): void
     {
         try {
-            if (!Schema::hasTable('system_configurations')) {
+            if (! Schema::hasTable('system_configurations')) {
                 return;
             }
 

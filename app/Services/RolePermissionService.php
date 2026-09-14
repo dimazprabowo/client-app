@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use Illuminate\Database\Eloquent\Collection;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RolePermissionService
 {
@@ -97,6 +97,7 @@ class RolePermissionService
                 ['name' => 'users_create',       'label' => 'Tambah User'],
                 ['name' => 'users_update',       'label' => 'Edit User'],
                 ['name' => 'users_delete',       'label' => 'Hapus User'],
+                ['name' => 'users_approve',      'label' => 'Approve Pendaftaran User'],
                 ['name' => 'users_export_excel', 'label' => 'Export Excel User'],
                 ['name' => 'users_export_pdf',   'label' => 'Export PDF User'],
                 ['name' => 'users_impersonate',  'label' => 'Impersonate User'],
@@ -126,9 +127,9 @@ class RolePermissionService
 
         $groups = $groupMapping;
 
-        if (!empty($unmapped)) {
+        if (! empty($unmapped)) {
             $groups['Lainnya'] = array_values(array_map(
-                fn($p) => ['name' => $p, 'label' => ucwords(str_replace('_', ' ', $p))],
+                fn ($p) => ['name' => $p, 'label' => ucwords(str_replace('_', ' ', $p))],
                 $unmapped
             ));
         }

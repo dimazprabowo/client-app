@@ -26,8 +26,8 @@ class ConfigHelper
         $config = SystemConfiguration::where('key', 'registration.deadline')
             ->where('is_active', true)
             ->first();
-        
-        if (!$config) {
+
+        if (! $config) {
             return false;
         }
 
@@ -37,6 +37,7 @@ class ConfigHelper
 
         try {
             $deadlineDate = \Carbon\Carbon::parse($config->value);
+
             return \Carbon\Carbon::now()->lt($deadlineDate);
         } catch (\Exception $e) {
             return false;
@@ -51,8 +52,8 @@ class ConfigHelper
         $config = SystemConfiguration::where('key', 'registration.deadline')
             ->where('is_active', true)
             ->first();
-        
-        if (!$config || empty($config->value)) {
+
+        if (! $config || empty($config->value)) {
             return null;
         }
 
@@ -69,6 +70,7 @@ class ConfigHelper
     public static function getFormattedRegistrationDeadline(string $format = 'd F Y, H:i'): ?string
     {
         $deadline = self::getRegistrationDeadline();
+
         return $deadline ? $deadline->translatedFormat($format) : null;
     }
 
@@ -78,11 +80,12 @@ class ConfigHelper
     public static function getRegistrationDaysRemaining(): ?int
     {
         $deadline = self::getRegistrationDeadline();
-        if (!$deadline) {
+        if (! $deadline) {
             return null;
         }
 
         $days = \Carbon\Carbon::now()->diffInDays($deadline, false);
+
         return max(0, (int) $days);
     }
 
@@ -92,6 +95,7 @@ class ConfigHelper
     public static function shouldShowRegistrationCountdown(): bool
     {
         $days = self::getRegistrationDaysRemaining();
+
         return $days !== null && $days <= 7;
     }
 
@@ -101,6 +105,24 @@ class ConfigHelper
     public static function getRegistrationClosedMessage(): string
     {
         return SystemConfiguration::get('registration.closed_message', 'Pendaftaran telah ditutup.');
+    }
+
+    /**
+     * Check if registration requires admin approval.
+     * When true, newly registered users need admin approval before they can login.
+     * When false, users are immediately active after registration.
+     */
+    public static function isRegistrationApprovalRequired(): bool
+    {
+        return (bool) SystemConfiguration::get('registration.requires_approval', true);
+    }
+
+    /**
+     * Get default role assigned to newly registered users.
+     */
+    public static function getDefaultRegistrationRole(): string
+    {
+        return SystemConfiguration::get('registration.default_role', 'user');
     }
 
     /**

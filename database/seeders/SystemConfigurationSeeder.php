@@ -29,7 +29,7 @@ class SystemConfigurationSeeder extends Seeder
                 'is_editable' => true,
                 'is_active' => true,
             ],
-            
+
             // Registration configurations
             [
                 'key' => 'registration.deadline',
@@ -46,6 +46,24 @@ class SystemConfigurationSeeder extends Seeder
                 'value' => 'Pendaftaran telah ditutup. Silakan hubungi administrator untuk informasi lebih lanjut.',
                 'data_type' => 'string',
                 'description' => 'Pesan yang ditampilkan ketika pendaftaran sudah ditutup',
+                'is_editable' => true,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'registration.requires_approval',
+                'category' => 'general',
+                'value' => '1',
+                'data_type' => 'boolean',
+                'description' => 'Apakah pendaftaran user baru memerlukan approval admin sebelum bisa login. Aktif = user baru harus di-approve admin. Nonaktif = user langsung aktif setelah daftar.',
+                'is_editable' => true,
+                'is_active' => true,
+            ],
+            [
+                'key' => 'registration.default_role',
+                'category' => 'general',
+                'value' => 'user',
+                'data_type' => 'string',
+                'description' => 'Role default yang diberikan ke user yang mendaftar sendiri (self-registration). Role ini akan di-assign saat user di-approve oleh admin.',
                 'is_editable' => true,
                 'is_active' => true,
             ],

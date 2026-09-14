@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use App\Notifications\CustomVerifyEmail;
+use App\Enums\UserApprovalStatus;
 use App\Notifications\CustomResetPassword;
+use App\Notifications\CustomVerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     protected $fillable = [
         'name',
@@ -26,6 +27,12 @@ class User extends Authenticatable implements MustVerifyEmail
         'phone',
         'position',
         'is_active',
+        'approval_status',
+        'approved_at',
+        'approved_by',
+        'rejected_at',
+        'rejected_by',
+        'rejection_reason',
         'email_verified_at',
     ];
 
@@ -40,6 +47,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'approval_status' => UserApprovalStatus::class,
+            'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
         ];
     }
 
@@ -61,6 +71,16 @@ class User extends Authenticatable implements MustVerifyEmail
             ->withTimestamps();
     }
 
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejecter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
     // Scopes
     public function scopeActive($query)
     {
@@ -77,15 +97,45 @@ class User extends Authenticatable implements MustVerifyEmail
         return $query->where('company_id', $companyId);
     }
 
+    public function scopePendingApproval($query)
+    {
+        return $query->where('approval_status', UserApprovalStatus::Pending);
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('approval_status', UserApprovalStatus::Approved);
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('approval_status', UserApprovalStatus::Rejected);
+    }
+
     // Accessors
     public function getIsAdminAttribute(): bool
     {
         return $this->hasRole(['super admin', 'admin']);
     }
 
+    public function getIsPendingAttribute(): bool
+    {
+        return $this->approval_status === UserApprovalStatus::Pending;
+    }
+
+    public function getIsApprovedAttribute(): bool
+    {
+        return $this->approval_status === UserApprovalStatus::Approved;
+    }
+
+    public function getIsRejectedAttribute(): bool
+    {
+        return $this->approval_status === UserApprovalStatus::Rejected;
+    }
+
     public function getFullNameAttribute(): string
     {
-        return $this->name . ($this->position ? " ({$this->position})" : '');
+        return $this->name.($this->position ? " ({$this->position})" : '');
     }
 
     /**
@@ -104,7 +154,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         // Determine which email to send to
         $emailTo = $this->pending_email ?? $this->email;
-        
+
         // Send notification directly to the specific email
         \Illuminate\Support\Facades\Notification::route('mail', $emailTo)
             ->notify(new CustomVerifyEmail($this));
@@ -117,7 +167,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         // Determine which email to send to
         $emailTo = $this->pending_email ?? $this->email;
-        
+
         // Send notification directly to the specific email
         \Illuminate\Support\Facades\Notification::route('mail', $emailTo)
             ->notify(new CustomResetPassword($token, $this));
