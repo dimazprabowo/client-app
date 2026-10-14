@@ -21,6 +21,8 @@ return new class extends Migration
             $table->foreignId('rejected_by')->nullable()->after('approved_at')->constrained('users')->onDelete('set null');
             $table->timestamp('rejected_at')->nullable()->after('rejected_by');
             $table->text('rejection_reason')->nullable()->after('rejected_at');
+            $table->foreignId('created_by')->nullable()->after('rejection_reason')->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->after('created_by')->constrained('users')->nullOnDelete();
 
             $table->index('company_id');
             $table->index('is_active');
@@ -34,11 +36,14 @@ return new class extends Migration
             $table->dropForeign(['company_id']);
             $table->dropForeign(['approved_by']);
             $table->dropForeign(['rejected_by']);
+            $table->dropForeign(['created_by']);
+            $table->dropForeign(['updated_by']);
             $table->dropIndex(['approval_status']);
             $table->dropColumn([
                 'company_id', 'phone', 'position', 'is_active',
                 'approval_status', 'approved_by', 'approved_at',
                 'rejected_by', 'rejected_at', 'rejection_reason',
+                'created_by', 'updated_by',
             ]);
         });
     }
