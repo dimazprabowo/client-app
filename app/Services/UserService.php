@@ -4,22 +4,26 @@ namespace App\Services;
 
 use App\Enums\UserApprovalStatus;
 use App\Helpers\ConfigHelper;
+use App\Models\Company;
 use App\Models\User;
 use App\Traits\HasDynamicLike;
+use App\Traits\SortsQuery;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
 {
-    use HasDynamicLike;
+    use HasDynamicLike, SortsQuery;
 
     public function getFilteredUsers(
         ?string $search = null,
         ?string $roleFilter = null,
         ?string $isActive = null,
         ?string $approvalStatus = null,
-        int $perPage = 15
+        int $perPage = 15,
+        ?string $sortField = null,
+        string $sortDir = 'asc'
     ): LengthAwarePaginator {
         $query = User::with(['roles', 'company']);
 
@@ -45,7 +49,21 @@ class UserService
             $query->where('approval_status', $approvalStatus);
         }
 
-        return $query->orderBy('name')->paginate($perPage);
+        $sortable = [
+            'name' => 'users.name',
+            'email' => 'users.email',
+            'company' => '('.Company::select('name')->whereColumn('companies.id', 'users.company_id')->limit(1)->toSql().')',
+            // CASE mengurutkan mengikuti urutan workflow enum (pending ->
+            // approved -> rejected), bukan alfabet nilai kolom.
+            'approval_status' => 'CASE users.approval_status '.collect(UserApprovalStatus::cases())
+                ->map(fn ($s, $i) => "WHEN '{$s->value}' THEN {$i}")
+                ->implode(' ').' ELSE '.count(UserApprovalStatus::cases()).' END',
+            'is_active' => 'users.is_active',
+        ];
+
+        $this->applySorting($query, $sortable, $sortField, $sortDir, 'name', 'asc', 'users.id');
+
+        return $query->paginate($perPage);
     }
 
     public function create(array $data, array $roles): User

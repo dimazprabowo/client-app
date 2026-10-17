@@ -88,12 +88,12 @@
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-900">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+                        <x-sortable-header field="name" :sortField="$sortField" :sortDir="$sortDir">User</x-sortable-header>
+                        <x-sortable-header field="email" :sortField="$sortField" :sortDir="$sortDir">Email</x-sortable-header>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Approval</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <x-sortable-header field="company" :sortField="$sortField" :sortDir="$sortDir">Company</x-sortable-header>
+                        <x-sortable-header field="approval_status" :sortField="$sortField" :sortDir="$sortDir">Approval</x-sortable-header>
+                        <x-sortable-header field="is_active" :sortField="$sortField" :sortDir="$sortDir">Status</x-sortable-header>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>

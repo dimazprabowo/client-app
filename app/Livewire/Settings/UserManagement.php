@@ -5,6 +5,7 @@ namespace App\Livewire\Settings;
 use App\Enums\UserApprovalStatus;
 use App\Exports\UsersExport;
 use App\Livewire\Traits\HasNotification;
+use App\Livewire\Traits\HasTableSorting;
 use App\Models\Company;
 use App\Models\User;
 use App\Services\UserService;
@@ -16,7 +17,7 @@ use Spatie\Permission\Models\Role;
 
 class UserManagement extends Component
 {
-    use AuthorizesRequests, HasNotification, WithPagination;
+    use AuthorizesRequests, HasNotification, HasTableSorting, WithPagination;
 
     protected $paginationTheme = 'tailwind';
 
@@ -96,6 +97,7 @@ class UserManagement extends Component
     public function mount()
     {
         $this->authorize('viewAny', User::class);
+        $this->sortField = 'name';
     }
 
     public function rules()
@@ -497,7 +499,9 @@ class UserManagement extends Component
             $this->roleFilter,
             $this->isActiveFilter !== '' ? $this->isActiveFilter : null,
             $this->approvalStatusFilter !== '' ? $this->approvalStatusFilter : null,
-            $this->perPage
+            $this->perPage,
+            $this->sortField,
+            $this->sortDir
         );
 
         $pendingCount = $service->getPendingApprovalCount();
