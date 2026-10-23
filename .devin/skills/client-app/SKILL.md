@@ -202,6 +202,18 @@ Jika ada ambiguitas yang berdampak besar -> TANYA dulu, jangan berasumsi.
 - Untuk notifikasi/chat/data live: broadcast Event + listen via Livewire (`#[On('echo:...')]`).
 - Broadcast harus ShouldBroadcast, kanal privat di-authorize di `routes/channels.php`.
 - Jangan polling jika bisa broadcast.
+- `resources/js/echo.js` adalah konfigurasi Echo kanonik — JANGAN ubah/duplikat konfigurasinya. Versi baku:
+  ```js
+  window.Echo = new Echo({
+      broadcaster: 'reverb',
+      key: import.meta.env.VITE_REVERB_APP_KEY,
+      wsHost: import.meta.env.VITE_REVERB_HOST,
+      wsPort: Number(import.meta.env.VITE_REVERB_PORT || 443),
+      wssPort: Number(import.meta.env.VITE_REVERB_PORT || 443),
+      forceTLS: (import.meta.env.VITE_REVERB_SCHEME || 'https') === 'https',
+      enabledTransports: ['ws', 'wss'],
+  });
+  ```
 
 # UX Detail (wajib, bukan opsional)
 - Setiap tabel: empty state (ikon + pesan), loading state, dan pagination.
@@ -264,6 +276,12 @@ Setiap tabel index WAJIB punya sorting kolom via 3 lapisan yang sudah disediakan
 - Table header: `bg-gray-50 dark:bg-gray-700/50 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider`.
 - Table row: `hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors`.
 - Badge status: pakai method `badgeClass()` dari Enum, JANGAN hardcode warna di Blade.
+
+## Custom Scrollbar (WAJIB — sudah tersedia di `resources/css/app.css`)
+- `.custom-scrollbar` WAJIB dipasang di SEMUA container scrollable (`overflow-x-auto`/`overflow-y-auto`): wrapper tabel, sidebar nav, panel chat, dropdown select, list di modal, dll. Sudah dark-mode aware via `.dark` variant — jangan tulis variant sendiri.
+- Scrollbar halaman (elemen `html`) sudah distyle global di app.css — JANGAN override.
+- `.navbar-scroll` = scrollbar disembunyikan total; HANYA untuk nav horizontal yang scroll-nya tidak perlu terlihat.
+- DILARANG menulis CSS scrollbar baru (`::-webkit-scrollbar`, `scrollbar-width`, dll) di file lain atau inline style — extend/pakai `.custom-scrollbar` agar konsisten.
 
 ## Responsive WAJIB (cek di setiap halaman)
 - Mobile-first: tulis class mobile dulu, lalu `sm:`, `md:`, `lg:` untuk breakpoint ke atas.
@@ -328,6 +346,7 @@ JANGAN bocorkan pesan exception mentah ke user.
 - [ ] Export Excel & PDF (jika relevan) + permission-nya
 - [ ] Tidak ada N+1, list paginated, search/filter server-side
 - [ ] Tabel index sortable: `HasTableSorting` di component + `SortsQuery` whitelist di service + `<x-sortable-header>` di blade
+- [ ] Scrollbar: `.custom-scrollbar` di semua container scrollable; tanpa CSS scrollbar duplikat di file lain
 - [ ] Test dasar lulus + Pint bersih
 - [ ] Tidak ada dead code / field mati / duplicate logic
 - [ ] URL aman: ID terenkripsi, tidak ada ID mentah di URL/link
@@ -347,3 +366,4 @@ JANGAN bocorkan pesan exception mentah ke user.
 - Membuat form grid tanpa breakpoint responsif (harus adaptif 1/2/3 kolom)
 - `orderBy` manual/hardcode di Livewire component atau inline `<th>` sortable -- WAJIB `SortsQuery` di Service + `<x-sortable-header>` di blade
 - Sorting tanpa whitelist `$sortable` di Service (field bebas = celah SQL injection di orderByRaw)
+- Menulis CSS scrollbar baru/inline (`::-webkit-scrollbar`, `scrollbar-width`) -- WAJIB pakai `.custom-scrollbar` dari `app.css`
