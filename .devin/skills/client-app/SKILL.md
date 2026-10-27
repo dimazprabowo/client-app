@@ -1,6 +1,6 @@
 ---
 name: client-app
-description: Panduan membangun fitur/aplikasi baru di atas template client-app (Laravel 12 + Livewire 4) secara konsisten, clean, permission-first, dan UI elegan.
+description: Panduan membangun fitur/aplikasi baru di atas template client-app (Laravel 13 + Livewire 4) secara konsisten, clean, permission-first, dan UI elegan.
 triggers:
   - user
   - model
@@ -18,14 +18,22 @@ triggers:
 - WAJIB analisis menyeluruh SEBELUM memberi solusi. Tidak ada duplicate logic, tidak ada field mati, tidak menghapus yang masih dipakai, dan hapus yang sudah tidak dipakai agar codebase CLEAN.
 
 # Stack & Versi (JANGAN diganti)
-- PHP ^8.2, Laravel ^12, Livewire ^4.1
+- PHP ^8.5, Laravel ^13, Livewire ^4.1
 - spatie/laravel-permission (role & permission)
 - spatie/laravel-activitylog (audit log)
-- maatwebsite/excel (export Excel)
+- maatwebsite/excel ^4 (export Excel — di atas phpspreadsheet ^5; method concern WAJIB punya return type sesuai interface, mis. `query(): \Illuminate\Database\Eloquent\Builder`, `styles(Worksheet $s): ?array`/`array`, `collection(): \Illuminate\Support\Collection`; tanpa return type = fatal error saat kelas dimuat)
 - barryvdh/laravel-dompdf (export PDF)
 - laravel/reverb (websocket/broadcast)
 - intervention/image, league/flysystem-aws-s3-v3 (storage lokal/S3)
 - Frontend: Blade + TailwindCSS + Alpine (bawaan Livewire)
+- Dev tools: laravel/pint (code style), phpunit ^12 (test — metadata pakai attribute PHP `#[Test]`/`#[DataProvider]`, BUKAN doc-comment `@test`)
+- Bebas deprecation PHP 8.5 / Laravel 13 (WAJIB dijaga):
+  - Konstanta PDO driver pakai kelas driver (`Pdo\Mysql::ATTR_SSL_CA`), bukan `PDO::MYSQL_ATTR_*`.
+  - Jangan panggil `Reflection*::setAccessible()`, `curl_close()`, `finfo_close()`, `imagedestroy()`; jangan cast `(integer)/(boolean)/(double)/(binary)`; jangan pakai `null` sebagai array key; nullable WAJIB eksplisit `?Type $x = null`.
+  - `Request::get()` deprecated -> pakai `$request->input()`/`query()`/`string()`.
+  - Middleware CSRF bernama `PreventRequestForgery` (alias `VerifyCsrfToken`/`ValidateCsrfToken` deprecated).
+  - `cache.serializable_classes=false` & `session.serialization=json` (hardening Laravel 13): simpan HANYA skalar/array di Cache & Session, JANGAN objek (Carbon, model, enum). Contoh benar: `SystemConfiguration::get()` meng-cache nilai mentah `value`+`data_type`, lalu cast (mis. ke Carbon) SETELAH dibaca — diuji `SystemConfigurationCacheTest`.
+  - Cek runtime: `LOG_DEPRECATIONS_CHANNEL=single php artisan test` lalu pastikan tidak ada baris `local.WARNING` baru di `storage/logs/laravel.log` (tinker memakai handler psysh sendiri — jangan dipakai untuk validasi).
 
 # Arsitektur Wajib (ikuti pola template, JANGAN bikin pola baru)
 1. LIVEWIRE-FIRST. Semua fitur = Livewire Component. Controller HANYA untuk auth/callback SSO.
@@ -311,9 +319,17 @@ Bungkus aksi Service call dengan try/catch:
 JANGAN bocorkan pesan exception mentah ke user.
 
 # Testing & Quality Gate
-- Sertakan minimal Feature test (Pest/PHPUnit) untuk: authorize gagal/berhasil, CRUD, dan permission gate.
-- Jalankan `./vendor/bin/pint` (code style) sebelum selesai.
+- Sertakan minimal Feature test (PHPUnit ^12, attribute `#[DataProvider]`) untuk: authorize gagal/berhasil, CRUD, dan permission gate.
+- Test yang menguji izin WAJIB memakai user dengan permission eksplisit (`givePermissionTo(...)`), BUKAN super admin — `Gate::before` super admin melewati semua Policy sehingga test tidak membuktikan apa-apa.
+- Setiap export Excel/PDF baru WAJIB ditambahkan ke data provider `tests/Feature/ExportTest.php` (file benar-benar digenerate + ditolak tanpa izin export).
+- Perilaku cache yang men-serialize: uji dengan `config(['cache.stores.array.serialize' => true, 'cache.serializable_classes' => false])` + `Cache::forgetDriver('array')` (lihat `SystemConfigurationCacheTest`) — store `array` default di test TIDAK men-serialize sehingga bug objek di cache tidak tertangkap.
+- Verifikasi: `php artisan test`, `php artisan migrate:fresh --seed`, `php artisan view:cache`, `./vendor/bin/pint <file yang diubah>`.
 - Factory & Seeder idempotent; daftarkan seeder baru di DatabaseSeeder dengan urutan benar (Permission -> Role -> data master -> dst).
+
+# Integrasi SSO (kontrak dengan sso-server — JANGAN ubah sepihak)
+- Login: OAuth2 Authorization Code ke sso-server (`config('services.sso.*')`, aktif bila `IS_USING_SSO=true`); callback di `App\Http\Controllers\Auth\SsoAuthController` (validasi `state` di session).
+- Endpoint sinkronisasi dari sso-server di `routes/api.php` prefix `/api/sso` (`ping`, `users`, `users/sync`, `users/remove`, `users/sync-roles`, `roles`, `roles/sync`, `roles/delete`, `permissions`), dilindungi `throttle:60,1` + middleware `sso.secret` (header `X-SSO-Secret`, dibandingkan dengan `hash_equals` terhadap `SSO_API_SECRET`).
+- Mengubah path/payload endpoint ini WAJIB diikuti perubahan `AppSyncService`/`RemoteAppService` di sso-server (dan sebaliknya).
 
 # Security-Aware (WAJIB, bukan opsional)
 - Semua endpoint/aksi ter-authorize (Policy). Tidak ada aksi tanpa permission.
