@@ -110,12 +110,33 @@ Jika butuh variant baru (mis. warna/size berbeda), EXTEND komponen yang ada via 
   Tanpa wire:key, saat item dihapus dari loop, Livewire DOM-diff bisa mencocokkan button item A dengan item B → loading spinner muter di button salah.
   Contoh: `wire:click="edit({{ $item->id }})"` + `wire:target="edit({{ $item->id }})"` + `wire:key="btn-edit-{{ $item->id }}"`.
   Konvensi naming wire:key: `btn-{action}-{id}` (button), `toggle-{action}-{id}` (toggle switch).
+- SEMUA action button WAJIB pakai `<x-loading-button>` dengan loading state, TERMASUK navigasi:
+  - "Tambah {Entity}" -> `wire:click="createEntity"` + redirect method di Livewire component.
+  - "View/Detail" (icon) -> `wire:click="viewEntity({{ $item->id }})"` + redirect method.
+  - "Edit" (icon/filled) -> `wire:click="editEntity({{ $item->id }})"` + redirect method.
+  - Redirect method: `return $this->redirect(route('entity.show', $model), navigate: true);`
+  - DILARANG raw `<a href="...">` dengan styling button untuk action/navigasi (kecuali breadcrumb text link).
+  - Hanya breadcrumb dan pure text link yang boleh pakai raw `<a href>`.
+  - Contoh redirect method di Livewire:
+    ```php
+    public function viewEntity($id)
+    {
+        $model = Model::findOrFail($id);
+        $this->authorize('view', $model);
+        return $this->redirect(route('entity.show', $model), navigate: true);
+    }
+    ```
 - `<x-loading-button>` variants:
   - Filled: `primary`, `success`, `danger`, `warning`, `secondary` (background berwarna).
   - Icon-only: `icon-blue`, `icon-red`, `icon-green`, `icon-amber`, `icon-gray` (text berwarna + subtle hover bg, padding p-1.5).
   - Built-in `icon` prop (string, pakai outline Heroicons): `edit`, `delete`, `view`, `reset`, `check`, `close`, `external`, `plus`, `send`, `download`, `pdf`, `excel`.
     Contoh: `<x-loading-button wire:click="edit({{ $item->id }})" target="edit({{ $item->id }})" variant="icon-blue" icon="edit" wire:key="btn-edit-{{ $item->id }}" title="Edit" />`.
-  - Custom icon via slot `<x-slot:icon>` masih didukung untuk ikon non-builtin.
+  - KONVENSI ICON EXPORT (WAJIB konsisten di SEMUA halaman export):
+    - Tombol Export Excel -> SELALU pakai `icon="excel"` (document-download style). DILARANG inline `<x-slot:icon>` SVG untuk excel.
+    - Tombol Export PDF -> SELALU pakai `icon="pdf"` (document style). DILARANG inline `<x-slot:icon>` SVG untuk pdf.
+    - Contoh: `<x-loading-button wire:click="exportExcel" target="exportExcel" variant="success" size="md" loadingText="Exporting..." title="Export Excel" icon="excel">Excel</x-loading-button>`.
+    - Single source of truth icon ada di `components/loading-button.blade.php` (`$builtinIcons`). Jangan duplikasi SVG path di view.
+  - Custom icon via slot `<x-slot:icon>` HANYA untuk ikon non-builtin (tidak ada di daftar di atas). JANGAN pakai slot untuk icon yang sudah ada built-in prop-nya.
   - Prop `iconClass` untuk override ukuran ikon (default `w-5 h-5` icon-only, `w-4 h-4` filled).
 - Toggle switch: `<x-toggle-switch>` (WAJIB untuk status active/inactive toggle).
   Props: `active` (bool), `target` (wire target untuk loading), `disabled` (bool), `title`, `activeColor` (blue/green/red/amber, default blue).
@@ -123,6 +144,12 @@ Jika butuh variant baru (mis. warna/size berbeda), EXTEND komponen yang ada via 
 - Batal: `<x-cancel-button>`. Hapus: `<x-delete-modal>`. Konfirmasi: `<x-confirm-modal>`.
 - Select: `<x-searchable-select>` / `<x-multi-searchable-select>`. Filter: `<x-filter-popover>`.
 - Form field: `<x-input-label>`, `<x-text-input>`, `<x-input-error>`.
+  - WAJIB beri `placeholder` di SETIAP `<x-text-input>` (kecuali `type="date"`/`type="hidden"` yang punya native picker).
+  - Placeholder berbahasa Indonesia, deskriptif, contoh: `placeholder="Nama lengkap"`, `placeholder="Alamat email"`.
+  - Untuk `<x-searchable-select>` WAJIB pakai prop `placeholder` dan `searchPlaceholder`.
+  - Field yang WAJIB diisi (required di `rules()`) HARUS pakai `:required="true"` di `<x-input-label>` agar muncul tanda bintang merah `*`.
+    Contoh: `<x-input-label for="user_id" value="User" :required="true" />`.
+    Jangan tambahkan `*` manual di value — gunakan prop `:required` agar konsisten (render `<span class="text-red-500 ml-0.5">*</span>`).
 - WAJIB dukung dark mode (kelas `dark:...`), spacing/typography konsisten dengan menu sejenis.
 - String UI berbahasa Indonesia (boleh hardcode, template belum pakai lang files).
 - Breadcrumb WAJIB di full-page form (mis. Master Data > Modul > Edit).
@@ -156,6 +183,22 @@ Jika butuh variant baru (mis. warna/size berbeda), EXTEND komponen yang ada via 
    - Konvensi: `wire:key="btn-{action}-{id}"` (button), `wire:key="toggle-{action}-{id}"` (toggle switch).
    - Parent loop (`<tr>`, `<div>`) juga WAJIB punya `wire:key="row-{id}"` / `wire:key="item-{id}"`.
    - Button di luar loop (header action: export, create, save) TIDAK perlu `wire:key` (hanya 1 instance, tidak ada risk mismatch).
+7. **Stale input value antar-entitas pada nested/tab form (morph carryover)**:
+   - `<input wire:model="...">` TIDAK punya `value` attribute di HTML hasil render — nilai di-set client-side. Saat morph, jika node input dipakai ulang (`wire:key` sama) tapi path `wire:model` berubah ke entitas lain (mis. pindah tab), Livewire **mempertahankan nilai DOM lama** → nilai entitas A "bocor" tampil di input entitas B.
+   - SOLUSI: tambahkan `row_key` stabil per baris di data array — `uuid` untuk baris baru (`(string) Str::uuid()`), `'{prefix}-{id}'` untuk persisted (mis. `'cat-'.$cat->id`). Pakai di `wire:key` semua wrapper (`tab-{row_key}`, `sub-{row_key}`, dst).
+   - Untuk layout tab (hanya tab aktif di-render), WAJIB bungkus panel konten dengan `wire:key="cat-panel-{row_key}"` agar saat ganti tab seluruh subtree di-replace (node input dibuat ulang fresh), bukan di-morph dengan nilai DOM lama.
+   - Extra key `row_key` di array aman — service save hanya membaca key eksplisit.
+8. **Stale `wire:model` binding saat baris di-REORDER (arrow up/down/left/right)**:
+   - Di Livewire 4, `wire:model` diimplementasikan sebagai closure `x-model` yang meng-capture **expression string** (mis. `items.0.name`) saat directive init — BUKAN dievaluasi ulang dari atribut.
+   - Saat keyed row dipindah (swap posisi), morph memindahkan node & update atribut `wire:model` ke index baru, TAPI directive tidak re-init → input tetap terikat path index LAMA → menampilkan & menulis data item yang salah (terlihat "nama terduplikasi"/tidak berpindah).
+   - SOLUSI: sertakan **index posisi** di `wire:key` wrapper yang berisi input `wire:model`, mis. `wire:key="item-{row_key}-{itemIndex}"`. Saat posisi berubah, key berubah → node di-render ulang fresh → directive init dengan expression baru yang benar.
+   - Key gabungan `{row_key}-{index}` (bukan hanya `{index}`) tetap mempertahankan identitas entitas untuk baris yang TIDAK berpindah (pending value aman).
+   - Alternatif pola aman: input tanpa `wire:model` — pakai `value="{{ ... }}"` + `wire:blur="updateX(...idx, $event.target.value)"`.
+9. **Options `x-searchable-select`/`x-multi-searchable-select` yang dinamis BISA STALE (BUG DIKETAHUI — belum di-fix di template ini)**:
+   - `options: @js($options)` di `x-data` hanya dibaca SEKALI saat Alpine init; root `wire:ignore.self` membuat node tidak di-render ulang → opsi baru server-side tidak pernah masuk dropdown.
+   - Komponen di template ini BELUM punya mekanisme refresh. Saat opsi bersifat dinamis atau saat memodifikasi komponen, WAJIB terapkan pola: render opsi juga ke `<div x-ref="optionsData" class="hidden">{!! json_encode($options) !!}</div>` — child TETAP ikut morph tiap render (`.self` hanya mengabaikan root). Saat dropdown dibuka, `refreshOptions()` membaca ulang elemen itu → selalu fresh.
+   - `componentId` deterministik: `md5($wireModel.'|'.$placeholder)` — JANGAN `uniqid()` (berubah tiap render).
+   - JANGAN andalkan `wire:key` signature di root `wire:ignore.self` untuk refresh opsi — key berubah = node beda, risiko node ganda saat morph.
 
 # File Storage (pola WAJIB)
 Alur async via worker (JANGAN simpan file langsung di request):
@@ -223,6 +266,13 @@ Jika ada ambiguitas yang berdampak besar -> TANYA dulu, jangan berasumsi.
   });
   ```
 
+## Menu Badge Realtime (pola Chat — sudah diterapkan)
+- Item menu boleh punya key `'badge'` (angka unread) di `HasMenuItems::getMenuItems()`: sidebar menampilkan pill gradient (cap `99+`) saat expanded & dot `animate-ping` saat collapsed; navbar menampilkan pill yang sama. Render badge sudah ada di `sidebar.blade.php`/`navigation.blade.php` — cukup ISI key-nya.
+- Hitung via 1 query, BUKAN loop: contoh `Chat::totalUnreadCountForUser($userId)` (join `chat_participants` + `chat_messages`, hormati `last_read_at` & `deleted_at` pivot per-user).
+- Listener realtime ada di `HasMenuItems::getListeners()` (diwarisi Sidebar & Navigation): `echo-private:user.{id},NewChatMessage` + event lokal `chat-unread-changed` → handler no-op yang memicu re-render (`getMenuItems()` rehitung badge; cache-nya per-request).
+- Setiap titik "dibaca" WAJIB dispatch `chat-unread-changed` agar badge turun tanpa reload (di `ChatIndex::markChatAsRead()` & `deleteChat()`).
+- Menu lain yang butuh badge realtime: isi `'badge'` di item menu + listen event broadcast/event Livewire yang relevan via `getListeners()` trait yang sama — JANGAN bikin mekanisme badge baru.
+
 # UX Detail (wajib, bukan opsional)
 - Setiap tabel: empty state (ikon + pesan), loading state, dan pagination.
 - Setiap form: validasi realtime (`rules()` + `validationAttributes()` Bahasa Indonesia), disable tombol saat proses.
@@ -230,6 +280,37 @@ Jika ada ambiguitas yang berdampak besar -> TANYA dulu, jangan berasumsi.
 - Feedback: SELALU notifikasi hasil (sukses/gagal) via HasNotification.
 - Upload file: tampilkan status (processing/completed/failed) + progress, tombol download/preview bila selesai.
 - Responsive: uji layout mobile (stack) & desktop.
+
+## Toast Hasil Filter/Search (WAJIB di SEMUA halaman list)
+Setiap perubahan search/filter WAJIB menampilkan toast jumlah hasil — pola `filterChanged`:
+
+1. Properti: `public bool $filterChanged = false;`
+2. Set flag di SEMUA hook `updating*` (search + setiap filter) dan `resetFilters()`:
+   ```php
+   public function updatingSearch()
+   {
+       $this->resetPage();
+       $this->filterChanged = true;
+   }
+
+   public function resetFilters()
+   {
+       $this->statusFilter = '';
+       $this->resetPage();
+       $this->filterChanged = true;
+       $this->notifySuccess('Filter berhasil direset.');
+   }
+   ```
+3. Konsumsi flag di `render()` SETELAH query paginator (pakai `->total()`, akurat lintas halaman):
+   ```php
+   if ($this->filterChanged) {
+       $this->notifySuccess("Ditemukan {$items->total()} data {entity}.");
+       $this->filterChanged = false;
+   }
+   ```
+   PENTING: `resetFilters()` sudah panggil notifySuccess sendiri — toast "Ditemukan N" tetap muncul setelahnya (dua toast berurutan, ini perilaku yang diinginkan).
+- JANGAN panggil notifySuccess di hook `updating*` — hasil belum dihitung saat itu; selalu di `render()` setelah query.
+- Bila halaman punya konteks tambahan (mis. kategori/grup terpilih), ekstrak penyusunan pesan ke method `searchResultMessage()` di component — jangan tulis logic pesan di Blade.
 
 ## Sorting Kolom Tabel (WAJIB di SEMUA tabel index)
 Setiap tabel index WAJIB punya sorting kolom via 3 lapisan yang sudah disediakan — JANGAN tulis ulang logic-nya:
@@ -296,12 +377,23 @@ Setiap tabel index WAJIB punya sorting kolom via 3 lapisan yang sudah disediakan
 - Tabel: gunakan `overflow-x-auto` wrapper di luar `<table>` untuk horizontal scroll di mobile.
 - Grid form: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4` (1 kolom mobile, 2 tablet, 3 desktop).
 - Action bar: tombol `w-full sm:w-auto` (full-width mobile, auto desktop).
+- Floating/sticky action bar (card berisi tombol aksi yang menempel di tepi viewport): JANGAN mepet tepi (`bottom-0`/`top-0`). Selalu beri offset `sticky bottom-3 sm:bottom-4` (atau `top-3`/`top-4` untuk bar atas) + `rounded-lg` + `shadow-lg` — terlihat mengambang, tidak tertutup browser chrome/toolbar mobile, dan tidak mengganjal konten saat scroll.
 - Filter & search: stack vertical di mobile (`flex flex-col sm:flex-row gap-3`), horizontal di desktop.
 - Modal: `max-w-2xl` default, content `px-4 py-4 sm:p-6` (padding lebih kecil di mobile).
 - Sidebar: sudah auto-collapse di mobile via Alpine store (jangan override).
 - Pagination: `hidden sm:flex` untuk prev/next text, cukup ikon di mobile.
 - Empty state: centered, `py-12 text-center`, ikon `h-12 w-12 mx-auto text-gray-400`.
 - Font size: `text-sm` untuk tabel/form (compact), `text-base` untuk page header, `text-xs` untuk meta/badge.
+- Bar aksi/header dengan beberapa tombol (export, filter, tambah): WAJIB `flex-wrap` — banyak tombol wrap ke baris baru di mobile, bukan overflow horizontal.
+- Header list (search + filter + action bar) dengan > 3 tombol aksi: baris horizontal mulai `lg:flex-row`, BUKAN `sm:flex-row` — di tablet/medium (sm–lg) tombol banyak masih melebihi lebar layar dan terdorong keluar ("offside"). Pola: `flex-col lg:flex-row lg:items-center gap-3`, baris tombol `flex flex-wrap items-center gap-2 w-full lg:w-auto lg:justify-end`. Header dengan <= 3 tombol tetap boleh `sm:flex-row`.
+- Pola action bar > 3 tombol: pisah 2 grup.
+  - GRUP UTAMA di baris atas, urutan WAJIB `Excel -> PDF -> Tambah`. Tombol "Tambah" pakai `flex-1 lg:flex-none` agar mengisi sisa baris di mobile.
+  - GRUP SEKUNDER (import, folder, bulk action, dst) dibungkus div sendiri `flex flex-wrap items-center gap-2 w-full lg:w-auto lg:order-3` — di mobile turun ke baris baru, tiap tombolnya `flex-1 lg:flex-none` agar mengisi lebar secara rata (profesional, tidak ada celah kosong).
+  - Di `lg:`, pertahankan urutan desktop dengan `lg:order-*`: Excel `lg:order-1`, PDF `lg:order-2`, grup sekunder `lg:order-3`, Tambah `lg:order-4` — Tambah tetap paling kanan (primary CTA). Di mobile tidak ada class order → mengikuti urutan DOM.
+  - Guard container sekunder dengan `@if` gabungan permission agar div kosong tidak menghasilkan gap/baris kosong.
+- Header card `justify-between` (judul + kontrol kanan seperti toggle/badge): WAJIB `flex-wrap` + `gap-y-*`, atau `flex-col sm:flex-row`. Jangan biarkan kontrol menekan judul di layar sempit.
+- `flex-1` di dalam `flex items-center` yang berisi input/teks: WAJIB `min-w-0` — tanpa itu `min-width:auto` membuat anak tidak bisa menyusut di bawah intrinsic width → overflow di mobile.
+- Teks panjang di breadcrumb/chip/badge bar (mis. nama kategori): parent `min-w-0`, ikon `shrink-0`, teks `truncate` + `title` attr untuk full text.
 
 ## Aksesibilitas Dasar
 - Setiap input WAJIB punya `<x-input-label>` dengan `for` attribute.
@@ -362,6 +454,7 @@ JANGAN bocorkan pesan exception mentah ke user.
 - [ ] Export Excel & PDF (jika relevan) + permission-nya
 - [ ] Tidak ada N+1, list paginated, search/filter server-side
 - [ ] Tabel index sortable: `HasTableSorting` di component + `SortsQuery` whitelist di service + `<x-sortable-header>` di blade
+- [ ] Halaman list punya toast "Ditemukan N data" saat search/filter berubah (pola `filterChanged`, notify di `render()` setelah paginator)
 - [ ] Scrollbar: `.custom-scrollbar` di semua container scrollable; tanpa CSS scrollbar duplikat di file lain
 - [ ] Test dasar lulus + Pint bersih
 - [ ] Tidak ada dead code / field mati / duplicate logic
@@ -382,4 +475,16 @@ JANGAN bocorkan pesan exception mentah ke user.
 - Membuat form grid tanpa breakpoint responsif (harus adaptif 1/2/3 kolom)
 - `orderBy` manual/hardcode di Livewire component atau inline `<th>` sortable -- WAJIB `SortsQuery` di Service + `<x-sortable-header>` di blade
 - Sorting tanpa whitelist `$sortable` di Service (field bebas = celah SQL injection di orderByRaw)
+- Membuat kolom relasi many-to-many (mis. Role) sortable -- urutan ambigu dan rapuh lintas DB
 - Menulis CSS scrollbar baru/inline (`::-webkit-scrollbar`, `scrollbar-width`) -- WAJIB pakai `.custom-scrollbar` dari `app.css`
+- Membuat action/navigasi button dengan raw `<a href>` (kecuali breadcrumb text link) -- WAJIB pakai `<x-loading-button>` dengan redirect method
+- Membuat `<x-text-input>` tanpa `placeholder` (kecuali type="date"/"hidden") -- WAJIB placeholder deskriptif bahasa Indonesia
+- Membuat field required tanpa `:required="true"` di `<x-input-label>` -- WAJIB tanda bintang merah `*` untuk field wajib
+- Membuat sticky action bar mepet tepi (`bottom-0`/`top-0`) -- WAJIB offset `bottom-3 sm:bottom-4`/`top-3`/`top-4`
+- Membuat bar aksi/header `justify-between` tanpa `flex-wrap` -- tombol/kontrol overflow di mobile
+- Memakai `sm:flex-row` pada header list dengan > 3 tombol aksi -- tombol terdorong keluar layar di tablet; gunakan `lg:flex-row`
+- Mencampur tombol sekunder (import/folder/bulk) sebaris dengan trio utama Excel/PDF/Tambah -- pisah jadi baris sendiri dengan pola grup utama/sekunder
+- `flex-1` tanpa `min-w-0` di dalam flex row -- anak tidak bisa menyusut, overflow di layar sempit
+- Membuat halaman list tanpa toast "Ditemukan N data" saat search/filter berubah -- WAJIB pola `filterChanged` + notify di `render()`
+- Memanggil notify di hook `updating*` untuk hasil filter -- hasil belum dihitung; notify HANYA di `render()` setelah query paginator
+- Membuat mekanisme badge menu baru -- WAJIB pakai key `'badge'` di `HasMenuItems` + listener yang sudah ada
