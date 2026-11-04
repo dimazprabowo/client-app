@@ -202,19 +202,17 @@ Jika butuh variant baru (mis. warna/size berbeda), EXTEND komponen yang ada via 
 
 # File Storage (pola WAJIB)
 Alur async via worker (JANGAN simpan file langsung di request):
-1. Di Livewire Component: simpan sementara -> `$file->store('temp/{fitur}', 'local')`, kirim temp_file_path + nama asli ke Service.
-2. Di Service: set kolom `file_status = 'processing'`, simpan record, lalu `dispatch(ProcessXxx::class, ...)`.
+1. Di Livewire Component: `use WithFileUploads`, simpan sementara via `FileStorageService::storeTemp($file, '{fitur}')` -> return `['path' => ..., 'original_name' => ...]`. Pass payload ke Service.
+2. Di Service: bungkus `DB::transaction()`, set kolom `file_status = 'processing'`, simpan record, lalu `dispatch(ProcessXxx::class, $record->id, $tempPath, $originalName)` DI DALAM transaction.
 3. Di Job (implements ShouldQueue, $tries=3, $timeout=120, ada method failed()):
-   - Bangun path final dengan KONVENSI:
-     `{app_env}/{nama-menu-fitur}/{nama-item-slug}/{slug-nama}_{YmdHis}.{ext}`
-     contoh: `config('app.env').'/personel-certificates/'.$personelSlug.'/'.$slug.'_'.now()->format('YmdHis').'.'.$ext`
-   - Simpan via `Storage::disk(file_disk())->put(...)`, verifikasi, hapus temp, update status 'completed' + file_path/file_name/file_size/file_processed_at.
-   - Bila gagal: status 'failed' + file_error.
-4. Download/preview & delete: SELALU lewat `Storage::disk(file_disk())`.
+   - Verifikasi temp file exists di disk 'local'.
+   - Panggil `FileStorageService::moveFromTemp($tempPath, $originalName, '{fitur}', [$slug])` -> return `['path', 'name', 'size']`.
+     Path final mengikuti konvensi `{app_env}/{fitur}/{segments}/{slug}_{YmdHis}.{ext}` via `buildPath()` — JANGAN copy-paste path builder di tiap Job.
+   - Update record: `file_status = 'completed'` + `file_path/file_name/file_size/file_processed_at`, `file_error = null`.
+   - Bila gagal: `file_status = 'failed'` + `file_error`, throw exception (untuk retry).
+4. Download/preview/stream & delete: SELALU lewat `FileStorageService::download()` / `::stream()` (inline playback audio/video) / `::delete()` / `::exists()`. JANGAN pakai `Storage::disk()` langsung di route/component.
 5. Disk pakai helper `file_disk()`; validasi upload pakai `config/file_upload.php` + helper `file_upload_validation_rule()`.
-
-PENTING (perbaikan dari template): JANGAN copy-paste logic path builder di tiap Job.
-EKSTRAK ke shared `App\Services\FileStorageService` atau helper `upload_path($fitur, array $segments, $fileName)` agar konvensi terpusat & DRY. Sediakan juga cleanup temp orphan (scheduled command).
+6. Cleanup temp orphan: scheduled command `uploads:cleanup-temp` (daily, hapus temp > 24 jam).
 
 # Protokol Kerja AI (WAJIB DIIKUTI URUT)
 FASE 1 - ANALISIS (tampilkan dulu, sebelum menulis kode):
@@ -335,7 +333,7 @@ Setiap tabel index WAJIB punya sorting kolom via 3 lapisan yang sudah disediakan
    ```php
    $sortable = [ // WHITELIST WAJIB — key = nama field dari UI, value = kolom/ekspresi SQL
        'name' => 'companies.name',
-       'users_count' => 'users_count',                    // alias withCount bisa langsung di-order
+       'users_count' => '(SELECT COUNT(*) FROM users WHERE users.company_id = companies.id)', // JANGAN alias withCount ('users_count') — Postgres tidak resolve alias di dalam ekspresi ORDER BY ... IS NULL
        'company' => '('.Company::select('name')           // relasi belongsTo -> subquery tanpa binding
            ->whereColumn('companies.id', 'users.company_id')->limit(1)->toSql().')',
        'status' => 'CASE users.approval_status '          // enum workflow -> CASE urutan enum, bukan alfabet
