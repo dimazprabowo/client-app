@@ -129,7 +129,7 @@ Jika butuh variant baru (mis. warna/size berbeda), EXTEND komponen yang ada via 
 - `<x-loading-button>` variants:
   - Filled: `primary`, `success`, `danger`, `warning`, `secondary` (background berwarna).
   - Icon-only: `icon-blue`, `icon-red`, `icon-green`, `icon-amber`, `icon-gray` (text berwarna + subtle hover bg, padding p-1.5).
-  - Built-in `icon` prop (string, pakai outline Heroicons): `edit`, `delete`, `view`, `reset`, `check`, `close`, `external`, `plus`, `send`, `download`, `pdf`, `excel`.
+  - Built-in `icon` prop (string, pakai outline Heroicons): `edit`, `delete`, `view`, `reset`, `check`, `close`, `external`, `plus`, `send`, `download`, `pdf`, `excel`, `copy`, `arrow-up`, `arrow-down`.
     Contoh: `<x-loading-button wire:click="edit({{ $item->id }})" target="edit({{ $item->id }})" variant="icon-blue" icon="edit" wire:key="btn-edit-{{ $item->id }}" title="Edit" />`.
   - KONVENSI ICON EXPORT (WAJIB konsisten di SEMUA halaman export):
     - Tombol Export Excel -> SELALU pakai `icon="excel"` (document-download style). DILARANG inline `<x-slot:icon>` SVG untuk excel.
@@ -194,11 +194,18 @@ Jika butuh variant baru (mis. warna/size berbeda), EXTEND komponen yang ada via 
    - SOLUSI: sertakan **index posisi** di `wire:key` wrapper yang berisi input `wire:model`, mis. `wire:key="item-{row_key}-{itemIndex}"`. Saat posisi berubah, key berubah → node di-render ulang fresh → directive init dengan expression baru yang benar.
    - Key gabungan `{row_key}-{index}` (bukan hanya `{index}`) tetap mempertahankan identitas entitas untuk baris yang TIDAK berpindah (pending value aman).
    - Alternatif pola aman: input tanpa `wire:model` — pakai `value="{{ ... }}"` + `wire:blur="updateX(...idx, $event.target.value)"`.
-9. **Options `x-searchable-select`/`x-multi-searchable-select` yang dinamis BISA STALE (BUG DIKETAHUI — belum di-fix di template ini)**:
-   - `options: @js($options)` di `x-data` hanya dibaca SEKALI saat Alpine init; root `wire:ignore.self` membuat node tidak di-render ulang → opsi baru server-side tidak pernah masuk dropdown.
-   - Komponen di template ini BELUM punya mekanisme refresh. Saat opsi bersifat dinamis atau saat memodifikasi komponen, WAJIB terapkan pola: render opsi juga ke `<div x-ref="optionsData" class="hidden">{!! json_encode($options) !!}</div>` — child TETAP ikut morph tiap render (`.self` hanya mengabaikan root). Saat dropdown dibuka, `refreshOptions()` membaca ulang elemen itu → selalu fresh.
+9. **Options `x-searchable-select`/`x-multi-searchable-select` yang dinamis bisa stale**:
+   - `options: @js($options)` di `x-data` hanya dibaca SEKALI saat Alpine init; root `wire:ignore.self` membuat node tidak di-render ulang → opsi baru server-side (mis. record baru dibuat) tidak pernah masuk dropdown.
+   - SOLUSI (sudah di komponen): opsi juga di-render ke `<div x-ref="optionsData" class="hidden">{!! json_encode($options) !!}</div>` — child TETAP ikut morph tiap render (`.self` hanya mengabaikan root). Saat dropdown dibuka, `refreshOptions()` membaca ulang elemen itu → selalu fresh.
+   - Node yang 100% diisi Alpine (teks display, chevron, panel dropdown berisi x-for/x-if) juga WAJIB `wire:ignore` — tanpa itu morph Livewire menghapus konten tiap re-render dan Alpine tidak menulis ulang.
    - `componentId` deterministik: `md5($wireModel.'|'.$placeholder)` — JANGAN `uniqid()` (berubah tiap render).
    - JANGAN andalkan `wire:key` signature di root `wire:ignore.self` untuk refresh opsi — key berubah = node beda, risiko node ganda saat morph.
+10. **Root literal WAJIB di Livewire view — jangan mulai dengan `@if`/`@include`**:
+    - View Livewire yang root-nya `@if` + `@include` menempatkan morph marker SEBELUM root partial; Livewire menempelkan `wire:id` ke elemen dalam pertama (mis. banner), menyebabkan konten terduplikasi & kontrol kosong setelah update.
+    - SOLUSI: selalu bungkus seluruh konten dalam SATU root HTML literal (`<div>...</div>`); kondisional/include ditaruh DI DALAM root tersebut.
+11. **Signed URL + `HasEncryptedRouteKey` — WAJIB pass `$model->getRouteKey()`, BUKAN model**:
+    - `URL::temporarySignedRoute` memanggil `route()` DUA kali internal (signature + URL final). Melempar model yang `getRouteKey()`-nya mengembalikan ciphertext baru tiap panggil (`Crypt::encryptString` IV acak) menghasilkan signature atas ciphertext A tapi URL berisi ciphertext B → selalu `InvalidSignatureException`.
+    - SOLUSI: `URL::temporarySignedRoute('route.name', $expiry, ['param' => $model->getRouteKey()])` — dievaluasi sekali.
 
 # File Storage (pola WAJIB)
 Alur async via worker (JANGAN simpan file langsung di request):
@@ -476,6 +483,7 @@ JANGAN bocorkan pesan exception mentah ke user.
 - Membuat kolom relasi many-to-many (mis. Role) sortable -- urutan ambigu dan rapuh lintas DB
 - Menulis CSS scrollbar baru/inline (`::-webkit-scrollbar`, `scrollbar-width`) -- WAJIB pakai `.custom-scrollbar` dari `app.css`
 - Membuat action/navigasi button dengan raw `<a href>` (kecuali breadcrumb text link) -- WAJIB pakai `<x-loading-button>` dengan redirect method
+- Membuat action button tanpa wire:key dan loading state
 - Membuat `<x-text-input>` tanpa `placeholder` (kecuali type="date"/"hidden") -- WAJIB placeholder deskriptif bahasa Indonesia
 - Membuat field required tanpa `:required="true"` di `<x-input-label>` -- WAJIB tanda bintang merah `*` untuk field wajib
 - Membuat sticky action bar mepet tepi (`bottom-0`/`top-0`) -- WAJIB offset `bottom-3 sm:bottom-4`/`top-3`/`top-4`
