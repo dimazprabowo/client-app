@@ -67,7 +67,7 @@ x-on:{{ $eventName }}.window="showModal($event.detail)"
 x-on:{{ $eventName }}-close.window="close()"
 x-show="show"
 x-cloak
-class="fixed inset-0 z-50 overflow-y-auto"
+class="fixed inset-0 z-50 overflow-y-auto custom-scrollbar"
 style="display: none;">
     <!-- Backdrop -->
     <div x-show="show"

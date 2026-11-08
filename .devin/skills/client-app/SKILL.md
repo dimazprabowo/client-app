@@ -15,6 +15,26 @@ triggers:
 - Ini APLIKASI BARU yang dibangun di atas TEMPLATE "client-app".
 - Database boleh di-reset total. Untuk perubahan schema, LANGSUNG UBAH migration create utama (jangan bikin migration `add_*` baru untuk tabel yang sama), lalu jalankan:
   `php artisan migrate:fresh --seed`
+- **PORTABEL PGSQL & MYSQL (WAJIB):** Semua migration & query HARUS jalan identik di PostgreSQL, MySQL/MariaDB, dan SQLite (test). DB boleh dipakai di salah satu driver — JANGAN tulis kode yang hanya jalan di satu driver.
+  - DILARANG `DB::statement()` raw SQL khusus driver di migration: `GENERATED ALWAYS` column, partial index (`WHERE deleted_at IS NULL`), trigger, `ALTER ... USING`, dsb. Pakai API Blueprint Laravel yang portable; logic yang tidak bisa di-Blueprint pindahkan ke Model/Service.
+  - `GENERATED ALWAYS` TIDAK boleh mereferensikan kolom `AUTO_INCREMENT` (MySQL error 1901) → hindari generated column sepenuhnya.
+  - MySQL tidak support partial index → "unique hanya untuk record aktif" JANGAN pakai `WHERE deleted_at IS NULL`.
+  - Pola WAJIB untuk `unique` + `softDeletes` bila nilai boleh dipakai ulang setelah delete — kolom marker biasa + model event (portable di semua driver):
+    ```php
+    // migration
+    $table->string('deleted_{kolom}_marker', 20)->default('0');
+    $table->unique(['{kolom}', 'deleted_{kolom}_marker'], '{tabel}_{kolom}_unique');
+
+    // Model::booted() — '0' = aktif, id = terhapus
+    static::deleted(fn ($m) => $m->isForceDeleting() ? null
+        : $m->newModelQuery()->whereKey($m->getKey())
+            ->update(['deleted_{kolom}_marker' => (string) $m->getKey()]));
+    static::restoring(fn ($m) => $m->deleted_{kolom}_marker = '0');
+    ```
+    WAJIB `newModelQuery()` (bukan `newQuery()`) agar bypass SoftDeletingScope; marker tidak masuk `$fillable`/activity log, dan delete harus lewat model event (bukan bulk query-builder). Contoh nyata: kolom `deleted_spk_marker` di template d-bone.
+  - Bila nilai TIDAK boleh didaur ulang setelah delete (mis. `companies.code`), `unique()` biasa + `softDeletes` sudah benar — dokumentasikan intent-nya. Perhatikan juga unique komposit + soft-delete manual (mis. `chat_participants (chat_id, user_id)`): bila re-add setelah delete didukung, pakai pola marker atau `withTrashed()->restore()` di Service.
+  - Nama index/FK maks 64 karakter (limit MySQL) — beri nama eksplisit bila nama auto-generate terlalu panjang.
+  - `$table->after()`: hanya boleh dipakai di `Schema::table` (ALTER TABLE — legal di MySQL, diabaikan driver lain). DILARANG di `Schema::create` — syntax `AFTER` tidak valid dalam `CREATE TABLE` (fatal error MySQL/MariaDB). Urutan kolom di create tidak perlu dikontrol.
 - WAJIB analisis menyeluruh SEBELUM memberi solusi. Tidak ada duplicate logic, tidak ada field mati, tidak menghapus yang masih dipakai, dan hapus yang sudah tidak dipakai agar codebase CLEAN.
 
 # Stack & Versi (JANGAN diganti)
@@ -447,6 +467,7 @@ JANGAN bocorkan pesan exception mentah ke user.
 
 # Definition of Done (checklist WAJIB di akhir jawaban)
 - [ ] Migration diubah di file create utama + `migrate:fresh --seed` sukses
+- [ ] Migration portable lintas driver: tanpa `DB::statement`/generated column/partial index → aman di pgsql & mysql (lihat aturan PORTABEL di Konteks Aplikasi)
 - [ ] Model: relasi, casts, $fillable, Enum, activity log, HasEncryptedRouteKey (jika muncul di URL)
 - [ ] Service: business logic + transaksi + normalisasi input
 - [ ] Livewire: rules()+attributes, authorize di tiap aksi, loading state, notifikasi
@@ -471,6 +492,7 @@ JANGAN bocorkan pesan exception mentah ke user.
 - Membuat fitur tanpa permission + Policy
 - Menyimpan file secara sinkron di request (harus lewat Job/worker)
 - Membuat migration `add_*` baru untuk tabel yang schema-nya masih boleh diubah
+- `DB::statement()` / raw SQL khusus satu driver di migration (generated column, partial index `WHERE`, trigger) — WAJIB API Blueprint portable atau logic di Model; `unique` + `softDeletes` yang boleh dipakai ulang WAJIB pola kolom marker + model event (lihat aturan PORTABEL)
 - Menggunakan ID mentah (angka) di URL untuk model yang punya HasEncryptedRouteKey
 - Membuat action button tanpa wire:key dan loading state
 - Memakai modal untuk form kompleks (nested/repeater/upload file) -- gunakan full-page form
